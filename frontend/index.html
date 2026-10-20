@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f7f2">
+    <title>영양 데이터 분석과 AI 채팅</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+    <script src="script.js?v=3" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="영양 데이터 홈">
+        <span class="brand-mark" aria-hidden="true">온</span>
+        <span>영양 데이터 연구실</span>
+      </a>
+      <div class="connection">
+        <span id="connection-dot" class="status-dot" aria-hidden="true"></span>
+        <span id="connection-status" role="status">API 연결 확인 중</span>
+      </div>
+      <button id="logout-button" class="button button-secondary" type="button" hidden>로그아웃</button>
+    </header>
+
+    <section id="login-panel" class="panel login-panel" aria-labelledby="login-title" hidden>
+      <p class="eyebrow">SECURE ACCESS</p>
+      <h1 id="login-title">Google 계정으로 로그인</h1>
+      <p>등록된 Google 계정으로 인증합니다. Google 비밀번호는 이 앱에 공유되지 않습니다.</p>
+      <button id="google-login-button" class="button button-primary full-width" type="button">Google 계정으로 로그인</button>
+      <p id="login-message" class="message" role="status"></p>
+    </section>
+
+    <main id="app-shell" class="page-shell" hidden>
+      <section class="intro">
+        <p class="eyebrow">DATA-DRIVEN INSIGHTS</p>
+        <h1>기록을 살펴보고,<br><span>데이터에 근거해 질문하세요.</span></h1>
+        <p class="intro-copy">식사 기록의 음식별 영양 정보와 일일 섭취 열량을 살펴보고, 저장된 데이터에 관해 AI와 대화할 수 있습니다.</p>
+      </section>
+
+      <section class="settings panel" aria-label="연결 설정">
+        <label class="field">
+          <span>API 주소</span>
+          <input id="api-base" type="url" value="http://127.0.0.1:8000" autocomplete="url">
+        </label>
+        <label class="field">
+          <span>사용자 ID</span>
+          <input id="user-id" type="text" value="demo-user" maxlength="128" autocomplete="off">
+        </label>
+        <p class="notice">데모용 사용자 ID입니다. 로그인된 계정은 서버에서 지정한 데이터 범위로 제한됩니다.</p>
+      </section>
+
+      <nav class="app-nav" aria-label="주요 화면">
+        <button class="nav-tab active" type="button" data-view-target="meals-view">식사 기록</button>
+        <button class="nav-tab" type="button" data-view-target="data-view">데이터 관리·분석</button>
+        <button class="nav-tab" type="button" data-view-target="chat-view">AI 채팅·대화 기록</button>
+      </nav>
+
+      <section id="meals-view" class="app-view">
+      <div class="content-grid">
+        <section class="panel form-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">NEW ENTRY</p>
+              <h2>식사 기록</h2>
+            </div>
+            <span class="heading-icon" aria-hidden="true">＋</span>
+          </div>
+          <form id="entry-form">
+            <div class="form-grid">
+              <label class="field">
+                <span>식사 날짜와 시간</span>
+                <input id="recorded-at" name="recorded_at" type="datetime-local" required>
+              </label>
+              <label class="field">
+                <span>식사 유형</span>
+                <select id="meal-type" name="meal_type" required>
+                  <option value="breakfast">아침</option>
+                  <option value="lunch">점심</option>
+                  <option value="dinner">저녁</option>
+                  <option value="snack">간식</option>
+                </select>
+              </label>
+            </div>
+            <label class="field">
+              <span>음식 이름</span>
+              <input id="food-name" name="food_name" type="text" maxlength="200" placeholder="예: 밥, 김치, 계란말이">
+            </label>
+            <button id="lookup-button" class="button button-secondary full-width lookup-button" type="button">영양정보 다시 찾기 <span aria-hidden="true">⌕</span></button>
+            <p class="lookup-hint">밥과 반찬을 각각 검색해 한 끼에 추가한 뒤 함께 저장할 수 있습니다.</p>
+            <label id="food-match-field" class="field food-match-field" hidden>
+              <span>검색 결과 선택</span>
+              <select id="food-match" aria-label="검색 결과 선택"></select>
+            </label>
+            <p id="lookup-message" class="message" role="status"></p>
+            <div class="form-grid amount-grid">
+              <label class="field">
+                <span>섭취량</span>
+                <input id="amount" name="amount" type="number" min="0.01" step="any" value="1">
+              </label>
+              <label class="field">
+                <span>단위</span>
+                <select id="unit" name="unit" required>
+                  <option value="g" selected>g (그램)</option>
+                  <option value="kg">kg (킬로그램)</option>
+                  <option value="serving">인분</option>
+                </select>
+              </label>
+            </div>
+            <fieldset class="nutrients">
+              <legend>영양 정보 <span>음식 검색 후 자동 계산</span></legend>
+              <div class="form-grid nutrient-grid">
+                <label class="field">
+                  <span>열량 (kcal)</span>
+                  <input name="calories_kcal" type="number" readonly placeholder="음식을 검색하세요">
+                </label>
+                <label class="field">
+                  <span>단백질 (g)</span>
+                  <input name="protein_g" type="number" readonly placeholder="자동 입력">
+                </label>
+                <label class="field">
+                  <span>탄수화물 (g)</span>
+                  <input name="carbohydrate_g" type="number" readonly placeholder="자동 입력">
+                </label>
+                <label class="field">
+                  <span>지방 (g)</span>
+                  <input name="fat_g" type="number" readonly placeholder="자동 입력">
+                </label>
+                <label class="field">
+                  <span>당류 (g)</span>
+                  <input name="sugar_g" type="number" readonly placeholder="자동 입력">
+                </label>
+                <label class="field">
+                  <span>나트륨 (mg)</span>
+                  <input name="sodium_mg" type="number" readonly placeholder="자동 입력">
+                </label>
+              </div>
+            </fieldset>
+            <button id="add-food-button" class="button button-secondary full-width" type="button" disabled>이 음식을 한 끼에 추가</button>
+            <section class="meal-foods" aria-label="현재 한 끼에 추가한 음식">
+              <div class="meal-foods-heading">
+                <strong>한 끼 구성 <span id="meal-food-count" class="count-badge">0</span></strong>
+                <span id="meal-calorie-total">0 kcal</span>
+              </div>
+              <div id="meal-food-list" class="meal-food-list" aria-live="polite">
+                <p class="empty-state">음식 검색 후 한 끼에 추가해 주세요.</p>
+              </div>
+            </section>
+            <label class="field">
+              <span>메모 <small>(선택)</small></span>
+              <textarea id="memo" name="memo" rows="2" maxlength="2000" placeholder="식사에 대한 간단한 메모"></textarea>
+            </label>
+            <p id="form-message" class="message" role="status"></p>
+            <button class="button button-primary full-width" type="submit">한 끼 저장하기 <span aria-hidden="true">→</span></button>
+          </form>
+        </section>
+
+        <div class="right-column">
+          <section class="panel summary-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">PERIOD OVERVIEW</p>
+                <h2>영양 분석</h2>
+              </div>
+              <span class="heading-icon summary-icon" aria-hidden="true">▤</span>
+            </div>
+            <div class="form-grid period-fields">
+              <label class="field">
+                <span>시작일</span>
+                <input id="start-date" type="date">
+              </label>
+              <label class="field">
+                <span>종료일</span>
+                <input id="end-date" type="date">
+              </label>
+            </div>
+            <button id="analyze-button" class="button button-secondary full-width" type="button">기간 분석하기 <span aria-hidden="true">↗</span></button>
+            <p id="summary-message" class="message" role="status"></p>
+            <div id="summary-content" class="summary-content" aria-live="polite">
+              <p class="empty-state">기간을 선택하고 분석을 시작하세요.</p>
+            </div>
+          </section>
+
+          <section class="panel entries-panel">
+            <div class="section-heading entries-heading">
+              <div>
+                <p class="eyebrow">YOUR JOURNAL</p>
+                <h2>식사 기록 <span id="entry-count" class="count-badge">0</span></h2>
+              </div>
+              <button id="refresh-button" class="icon-button" type="button" aria-label="기록 새로고침" title="새로고침">↻</button>
+            </div>
+            <div id="entries-list" class="entries-list" aria-live="polite">
+              <p class="empty-state">불러온 기록이 없습니다.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+      </section>
+
+      <section id="data-view" class="app-view" hidden>
+        <div class="data-layout">
+          <section class="panel data-form-panel">
+            <div class="section-heading">
+              <div><p class="eyebrow">DAILY CALORIES</p><h2 id="data-form-title">관측값 추가</h2></div>
+              <span class="heading-icon" aria-hidden="true">＋</span>
+            </div>
+            <form id="data-form">
+              <label class="field"><span>날짜</span><input id="data-date" name="date" type="date" required></label>
+              <label class="field data-spaced"><span>일일 섭취 열량 (kcal)</span><input id="data-value" name="value" type="number" min="0" max="1000000" step="any" required></label>
+              <label class="field data-spaced"><span>메모</span><textarea id="data-memo" name="memo" rows="3" maxlength="2000" placeholder="기록의 맥락을 입력하세요"></textarea></label>
+              <p id="data-form-message" class="message" role="status"></p>
+              <div class="data-form-actions">
+                <button id="data-submit" class="button button-primary" type="submit">데이터 저장</button>
+                <button id="data-cancel-edit" class="button button-secondary" type="button" hidden>수정 취소</button>
+              </div>
+            </form>
+          </section>
+
+          <div class="right-column">
+            <section class="panel summary-panel">
+              <div class="section-heading"><div><p class="eyebrow">STATISTICS & TREND</p><h2>데이터 요약</h2></div><span class="heading-icon summary-icon" aria-hidden="true">↗</span></div>
+              <div class="form-grid period-fields">
+                <label class="field"><span>시작일</span><input id="data-start-date" type="date"></label>
+                <label class="field"><span>종료일</span><input id="data-end-date" type="date"></label>
+              </div>
+              <button id="data-analyze-button" class="button button-secondary full-width" type="button">선택 기간 분석</button>
+              <p id="data-summary-message" class="message" role="status"></p>
+              <div id="data-summary-content" class="summary-content" aria-live="polite"><p class="empty-state">기간을 선택하세요.</p></div>
+            </section>
+            <section class="panel entries-panel">
+              <div class="section-heading entries-heading">
+                <div><p class="eyebrow">DATA POINTS</p><h2>저장 데이터 <span id="data-count" class="count-badge">0</span></h2></div>
+                <button id="data-refresh-button" class="icon-button" type="button" aria-label="데이터 새로고침">↻</button>
+              </div>
+              <div id="data-list" class="entries-list" aria-live="polite"><p class="empty-state">데이터를 불러오세요.</p></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section id="chat-view" class="app-view" hidden>
+        <div class="chat-layout">
+          <aside class="panel conversations-panel">
+            <div class="section-heading">
+              <div><p class="eyebrow">SAVED CHATS</p><h2>대화 기록</h2></div>
+              <button id="new-chat-button" class="icon-button" type="button" aria-label="새 대화">＋</button>
+            </div>
+            <p id="conversation-list-message" class="message" role="status"></p>
+            <div id="conversation-list" class="conversation-list" aria-live="polite"><p class="empty-state">저장된 대화를 불러오는 중...</p></div>
+          </aside>
+          <section class="panel chat-panel">
+            <div class="section-heading chat-heading">
+              <div><p class="eyebrow">DATA-GROUNDED AI</p><h2 id="chat-title">데이터에게 질문하기</h2></div>
+              <span id="chat-context-status" class="context-badge">최근 30일 식사·칼로리 기록</span>
+            </div>
+            <div id="chat-messages" class="chat-messages" aria-live="polite">
+              <p class="empty-state chat-empty">예: “오늘 먹은 음식과 열량을 알려줘.”</p>
+            </div>
+            <p id="chat-message" class="message" role="status"></p>
+            <form id="chat-form" class="chat-form">
+              <label class="visually-hidden" for="chat-input">AI에게 질문</label>
+              <textarea id="chat-input" rows="2" maxlength="12000" placeholder="식사 기록이나 칼로리 추세에 대해 질문하세요..." required></textarea>
+              <button id="chat-send-button" class="button button-primary" type="submit">보내기</button>
+            </form>
+            <p class="chat-footnote">답변은 최근 30일 식사 기록과 일일 칼로리 데이터에 근거합니다. 두 기록이 같은 섭취를 나타낼 수 있어 서로 합산하지 않습니다.</p>
+          </section>
+        </div>
+      </section>
+      <footer>기록은 영양 성분을 진단하거나 의료 조언을 대신하지 않습니다.</footer>
+    </main>
+  </body>
+</html>

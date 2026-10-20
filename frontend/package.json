@@ -1,0 +1,7 @@
+{
+  "name": "nutrition-data-frontend",
+  "private": true,
+  "scripts": {
+    "build": "node build.js"
+  }
+}
