@@ -1,6 +1,7 @@
 """Business logic for dated numeric observations and their summaries."""
 
 from datetime import date, datetime, timezone
+from statistics import median, pstdev
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -114,6 +115,7 @@ def build_data_summary(
         key=lambda item: (item.get("date", ""), str(item.get("created_at", ""))),
     )
     values = [float(record["value"]) for record in records]
+    ordered_values = sorted(values)
 
     if len(values) >= 4:
         window_size = min(7, len(values) // 2)
@@ -158,6 +160,8 @@ def build_data_summary(
         period_end=end_date,
         count=len(values),
         average=round(sum(values) / len(values), 2) if values else None,
+        median=round(median(ordered_values), 2) if ordered_values else None,
+        standard_deviation=round(pstdev(values), 2) if values else None,
         maximum=max(values) if values else None,
         minimum=min(values) if values else None,
         trend=trend,

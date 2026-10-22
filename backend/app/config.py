@@ -42,6 +42,16 @@ class Settings:
         "KMA_DAILY_API_URL",
         "https://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList",
     )
+    weather_csv_url = os.getenv("WEATHER_CSV_URL", "").strip()
+    weather_csv_path = os.getenv("WEATHER_CSV_PATH", "").strip()
+    weather_csv_refresh_minutes = int(os.getenv("WEATHER_CSV_REFRESH_MINUTES", "60"))
+    weather_csv_user_id = os.getenv("WEATHER_CSV_USER_ID", os.getenv("APP_USER_ID", "demo-user"))
+    kma_apihub_key = os.getenv("KMA_APIHUB_KEY")
+    kma_midta_region_id = os.getenv("KMA_MIDTA_REGION_ID", "11H20301")
+    kma_midta_api_url = os.getenv(
+        "KMA_MIDTA_API_URL",
+        "https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidTa",
+    )
     ai_provider = (
         os.getenv("AI_PROVIDER")
         or ("gemini" if os.getenv("GEMINI_API_KEY") else "openai")

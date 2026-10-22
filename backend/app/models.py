@@ -97,6 +97,8 @@ class DataSummary(BaseModel):
     period_end: date
     count: int
     average: float | None
+    median: float | None
+    standard_deviation: float | None
     maximum: float | None
     minimum: float | None
     trend: dict[str, Any]
@@ -169,6 +171,17 @@ class KmaWeatherSyncRequest(BaseModel):
     station_id: int = Field(ge=1, le=999)
     start_date: date
     end_date: date
+
+
+class WeatherCsvRecommendationRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=128)
+    target_date: date
+    csv_text: str = Field(min_length=1, max_length=5_000_000)
+
+
+class SavedWeatherRecommendationRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=128)
+    target_date: date
 
 
 class DietLogInput(BaseModel):

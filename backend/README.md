@@ -27,6 +27,12 @@ Configure the values in `backend/.env`:
 | `GEMINI_MODEL` | AI chat | Defaults to `gemini-3.5-flash` |
 | `FOOD_API_KEY` | Food nutrition lookup | data.go.kr 식품의약품안전처_식품영양성분DB정보 API key |
 | `KMA_API_KEY` | Weather sync | Korea Meteorological Administration API key |
+| `KMA_APIHUB_KEY` | Changwon medium-range forecast sync | API key issued by KMA API Hub |
+| `KMA_MIDTA_REGION_ID` | Changwon medium-range forecast sync | Defaults to Changwon region code `11H20301` |
+| `WEATHER_CSV_URL` | Scheduled weather sync | Public or server-accessible direct CSV download URL; unset disables polling |
+| `WEATHER_CSV_PATH` | Scheduled weather sync | Local CSV path for a locally running API; ignored when URL is set |
+| `WEATHER_CSV_REFRESH_MINUTES` | Scheduled weather sync | Poll interval in minutes; defaults to 60, minimum 5 |
+| `WEATHER_CSV_USER_ID` | Scheduled weather sync | Firestore app user ID; defaults to `APP_USER_ID` |
 | `CORS_ORIGINS` | Browser access | Comma-separated exact frontend origins |
 
 Never commit `.env` or service-account credentials. If Firebase or the selected AI provider is not configured, unrelated routes and `/docs` remain available; dependent API routes return an explicit `503`.
@@ -68,7 +74,7 @@ All CRUD routes require `user_id` as a query parameter. A data point is a daily 
 | `GET` | `/api/data?user_id=demo-user&start_date=2026-07-01&end_date=2026-10-19` | List date-filtered points |
 | `PUT` | `/api/data/{id}?user_id=demo-user` | Replace the date, value, and memo |
 | `DELETE` | `/api/data/{id}?user_id=demo-user` | Delete a point |
-| `GET` | `/api/data/summary?user_id=demo-user&start_date=2026-07-01&end_date=2026-10-19` | Count, average, minimum, maximum, and recent trend |
+| `GET` | `/api/data/summary?user_id=demo-user&start_date=2026-07-01&end_date=2026-10-19` | Count, average, median, population standard deviation, minimum, maximum, and recent trend |
 
 Trend compares the latest seven recorded points with the preceding up-to-seven points. Fewer than four points is reported as insufficient data. The summary only uses stored records in the requested inclusive date range.
 
@@ -110,6 +116,10 @@ The chat context includes the user's last-30-day daily calorie summary and meal 
 - `GET /api/food-nutrition?query=현미밥` — search data.go.kr's 전국통합식품영양성분정보(음식) standard-data API; the frontend scales the source reference amount to the entered amount.
 - `GET /users/{user_id}/analysis/summary` — period nutrient totals and averages, counting a grouped meal once while retaining its individual food count.
 - Existing weather, activity, and recommendation routes remain available under `/api`.
+- `POST /api/weather/csv/recommend` — accept `{ "user_id", "target_date", "csv_text" }`, upsert daily weather observations, and save a weather-based food recommendation. CSV requires `tm` and `avgTa`; `sumRn` and `avgRhm` are optional.
+- `POST /api/weather/recommend-saved` — accept `{ "user_id", "target_date" }` and recommend from observations already imported into Firestore.
+
+Recent weather observations and saved weather-CSV recommendations are included in `/api/chat` context alongside food and calorie records. Missing dates are reported as missing observations and are not imputed as zero. Weather-based menu rules do not perform seasonal decomposition or statistical outlier detection.
 
 In the meal form, search and select each food (for example rice, kimchi, and egg), set its serving amount, and choose **이 음식을 한 끼에 추가**. The unfinished meal is temporarily saved in the browser for the current API address and user ID, so it can be restored after a refresh. A selected food that is still in the search form is also included automatically when **한 끼 저장하기** is pressed. If a typed search has no selected result, the form asks the user to select a result or clear that search before saving. Every component is stored as an individual food record with a shared `meal_id`; nutrient totals include all components, while the journal groups them into one meal. The journal lets users delete either an individual food or the entire meal.
 

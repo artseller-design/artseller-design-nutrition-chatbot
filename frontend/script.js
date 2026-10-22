@@ -693,6 +693,8 @@ function renderDataSummary(summary) {
     <div class="summary-total"><strong>${summary.count}</strong><span>개 데이터 포인트</span></div>
     <div class="metrics-grid">
       <div class="metric-card"><span>평균</span><strong>${number(summary.average)}<small>kcal</small></strong></div>
+      <div class="metric-card"><span>중앙값</span><strong>${number(summary.median)}<small>kcal</small></strong><p>기록을 크기순으로 나눈 가운데 값</p></div>
+      <div class="metric-card"><span>표준편차</span><strong>${number(summary.standard_deviation)}<small>kcal</small></strong><p>평균을 중심으로 한 기록의 변동 폭</p></div>
       <div class="metric-card"><span>최대</span><strong>${number(summary.maximum)}<small>kcal</small></strong></div>
       <div class="metric-card"><span>최소</span><strong>${number(summary.minimum)}<small>kcal</small></strong></div>
       <div class="metric-card"><span>최근 추세</span><strong>${escapeHtml(trendLabels[trend.direction] || "—")}</strong><p>${escapeHtml(trendText)}</p></div>
@@ -1007,6 +1009,60 @@ document.querySelectorAll("[data-view-target]").forEach((button) => {
   });
 });
 
+document.getElementById("weather-recommend-button").addEventListener("click", async () => {
+  const button = document.getElementById("weather-recommend-button");
+  const message = document.getElementById("weather-recommend-message");
+  const file = document.getElementById("weather-csv-file").files[0];
+  const targetDate = document.getElementById("weather-target-date").value;
+  if (!targetDate) {
+    setMessage(message, "추천 날짜를 선택해 주세요.", true);
+    return;
+  }
+  button.disabled = true;
+    setMessage(message, file ? "CSV의 날씨를 분석하고 음식 후보를 찾는 중..." : "저장된 날씨를 확인하고 음식 후보를 찾는 중...");
+  try {
+    let path = "/api/weather/recommend-saved";
+    let payload = { user_id: currentUserId(), target_date: targetDate };
+    if (file) {
+      const bytes = await file.arrayBuffer();
+      let csvText = new TextDecoder("utf-8").decode(bytes);
+      if (csvText.includes("\uFFFD")) csvText = new TextDecoder("euc-kr").decode(bytes);
+      path = "/api/weather/csv/recommend";
+      payload = { ...payload, csv_text: csvText };
+    }
+    const result = await request(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...payload,
+      }),
+    });
+    const number = (value) => value == null ? "미기록" : formatNumber(value);
+    const foods = result.foods.length
+      ? result.foods.map((food) => `<article class="weather-food-card"><strong>${escapeHtml(food.food_name)}</strong><span>${number(food.calories_kcal)} kcal</span><p>단백질 ${number(food.protein_g)} g · 탄수화물 ${number(food.carbohydrate_g)} g · 기준 ${number(food.nutrient_basis_g)} g<br>${escapeHtml(food.reason || "날씨 조건에 맞는 메뉴 후보입니다.")}</p></article>`).join("")
+      : '<p class="empty-state">조건에 맞는 식품 후보가 없습니다. 다른 날짜나 CSV 자료로 다시 시도해 보세요.</p>';
+    const weather = result.weather || {};
+    const sourceLabel = file ? "업로드한 CSV" : "저장된 날씨 자료";
+    const humidity = weather.humidity_percent == null ? "" : `<div class="metric-card"><span>습도</span><strong>${number(weather.humidity_percent)}<small>%</small></strong></div>`;
+    document.getElementById("weather-recommend-result").innerHTML = `
+      <div class="weather-summary-head"><strong>${escapeHtml(result.target_date)} · ${escapeHtml(weather.city || "창원")}</strong><span class="weather-source-tag">${sourceLabel}</span></div>
+      <div class="metrics-grid weather-metrics">
+        <div class="metric-card"><span>평균 기온</span><strong>${number(weather.temperature_c)}<small>°C</small></strong></div>
+        <div class="metric-card"><span>강수량</span><strong>${number(weather.precipitation_mm)}<small>mm</small></strong></div>
+        ${humidity}
+      </div>
+      <p class="weather-reason">${escapeHtml(result.recommendation_reason || "날씨 특성을 기준으로 메뉴를 골랐습니다.")}</p>
+      <h3 class="weather-foods-title">오늘의 메뉴 후보</h3><div class="weather-food-list">${foods}</div>
+      <ul class="weather-quality"><li>최근 7일 관측 ${number(result.recent_weather_days)}일</li><li>누락 ${number(result.missing_days_in_recent_week)}일</li><li>당일 중복 ${number(result.duplicate_rows_for_target_date)}행</li></ul>
+      <ul class="summary-notes"><li>날씨 기준의 참고용 음식 후보입니다. 개인의 알레르기나 건강 상태는 반영하지 않습니다.</li><li>기상 기록의 결측·중복 정보를 함께 표시하며, 장기 계절성 및 이상치 검정은 별도로 수행하지 않습니다.</li></ul>`;
+    setMessage(message, file ? "CSV 날씨를 분석해 추천 결과를 만들었습니다." : "저장된 날씨 자료로 추천 결과를 만들었습니다.");
+  } catch (error) {
+    setMessage(message, error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
 document.getElementById("data-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const submit = document.getElementById("data-submit");
@@ -1237,11 +1293,20 @@ const today = localDateValue(new Date());
 const initialDataStart = new Date();
 initialDataStart.setDate(initialDataStart.getDate() - 119);
 document.getElementById("recorded-at").value = localDateTimeValue(new Date());
+const latestWeatherDate = new Date();
+latestWeatherDate.setDate(latestWeatherDate.getDate() - 1);
+document.getElementById("weather-target-date").value = localDateValue(latestWeatherDate);
 document.getElementById("start-date").value = today;
 document.getElementById("end-date").value = today;
 document.getElementById("data-date").value = today;
 document.getElementById("data-start-date").value = localDateValue(initialDataStart);
 document.getElementById("data-end-date").value = today;
+const initialView = new URLSearchParams(window.location.search).get("view");
+if (initialView) {
+  const initialTab = [...document.querySelectorAll("[data-view-target]")]
+    .find((tab) => tab.dataset.viewTarget === initialView);
+  initialTab?.click();
+}
 if (authEnabled) {
   setAuthView(false);
   authSession = readAuthSession();

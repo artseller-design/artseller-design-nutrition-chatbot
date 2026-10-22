@@ -1,10 +1,12 @@
 """개인화 다이어트 추천 MVP의 FastAPI 진입점."""
 
+import asyncio
 import os
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.firebase import check_firestore_connection, get_firestore
 from app.routers import (
     activity,
@@ -20,6 +22,7 @@ from app.routers import (
     weather,
 )
 from app.security import enforce_app_user_scope, require_firebase_user
+from app.services.weather_csv import weather_csv_poll_loop
 
 app = FastAPI(
     title="영양 기록 및 다이어트 추천 API",
@@ -59,6 +62,25 @@ app.include_router(data.router)
 app.include_router(conversations.router)
 app.include_router(chat.router)
 
+_weather_csv_task: asyncio.Task | None = None
+
+
+@app.on_event("startup")
+async def start_weather_csv_sync() -> None:
+    global _weather_csv_task
+    if settings.weather_csv_url or settings.weather_csv_path or settings.kma_api_key or settings.kma_apihub_key:
+        _weather_csv_task = asyncio.create_task(weather_csv_poll_loop())
+
+
+@app.on_event("shutdown")
+async def stop_weather_csv_sync() -> None:
+    if _weather_csv_task is not None:
+        _weather_csv_task.cancel()
+        try:
+            await _weather_csv_task
+        except asyncio.CancelledError:
+            pass
+
 
 @app.get("/")
 def root():
@@ -71,6 +93,9 @@ def health_check():
     result = {
         "status": "ok" if connected else "degraded",
         "firestore_connected": connected,
+        "weather_csv_sync_enabled": bool(
+            settings.weather_csv_url or settings.weather_csv_path or settings.kma_api_key or settings.kma_apihub_key
+        ),
     }
     if error:
         result["firestore_error"] = error

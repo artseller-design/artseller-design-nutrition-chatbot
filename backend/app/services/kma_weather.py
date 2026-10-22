@@ -1,12 +1,13 @@
 """기상청 ASOS 일자료 조회 및 앱 내부 날씨 데이터 변환."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
-from zoneinfo import ZoneInfo
 
 import httpx
 
 from app.config import settings
+
+KST = timezone(timedelta(hours=9), "KST")
 
 
 def _items(payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -86,7 +87,7 @@ async def fetch_daily_weather(
                 "precipitation_mm": precipitation,
                 "recorded_at": datetime.now(timezone.utc),
                 "observed_at": datetime.combine(
-                    observed_on, datetime.min.time(), tzinfo=ZoneInfo("Asia/Seoul")
+                    observed_on, datetime.min.time(), tzinfo=KST
                 ),
             }
         )

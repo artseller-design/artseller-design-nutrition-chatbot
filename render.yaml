@@ -24,6 +24,18 @@ services:
         value: gemini-3.5-flash
       - key: FOOD_API_KEY
         sync: false
+      - key: WEATHER_CSV_URL
+        sync: false
+      - key: WEATHER_CSV_REFRESH_MINUTES
+        value: "60"
+      - key: WEATHER_CSV_USER_ID
+        value: demo-user
+      - key: KMA_API_KEY
+        sync: false
+      - key: KMA_APIHUB_KEY
+        sync: false
+      - key: KMA_MIDTA_REGION_ID
+        value: 11H20301
       - key: CORS_ORIGINS
         sync: false
       - key: REQUIRE_FIREBASE_AUTH
