@@ -80,7 +80,7 @@ class DataRecordCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     date: date
-    value: FiniteFloat
+    value: FiniteFloat = Field(ge=0)
     memo: str = Field(default="", max_length=2000)
 
 
