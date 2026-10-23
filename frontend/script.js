@@ -724,7 +724,18 @@ function cancelDataEdit() {
   setMessage(document.getElementById("data-form-message"), "");
 }
 
-function renderDataList(records) {
+function recordedKoreaDate(value) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type) => parts.find((item) => item.type === type)?.value || "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function renderDataList(records, foodsByDate = {}) {
   const list = document.getElementById("data-list");
   document.getElementById("data-count").textContent = records.length;
   if (!records.length) {
@@ -735,7 +746,10 @@ function renderDataList(records) {
     <article class="data-record">
       <div class="data-record-main">
         <time>${escapeHtml(record.date)}</time>
-        <strong>${formatNumber(record.value)} <small>kcal</small></strong>
+        <strong>${formatNumber(record.value)} <small>kcal · 하루 합계</small></strong>
+        ${(foodsByDate[record.date]?.length)
+          ? `<p class="data-record-foods"><span>먹은 음식</span> ${foodsByDate[record.date].map((food) => `${escapeHtml(food.name)} (${formatNumber(food.calories)} kcal)`).join(" · ")}</p>`
+          : ""}
         ${record.memo ? `<p>${escapeHtml(record.memo)}</p>` : ""}
       </div>
       <div class="data-record-actions">
@@ -756,8 +770,28 @@ async function loadDataRecords() {
     end_date: end,
     limit: "500",
   });
-  const records = await request(`/api/data?${query}`);
-  renderDataList(records);
+  const mealStart = new Date(`${start}T12:00:00`);
+  mealStart.setDate(mealStart.getDate() - 1);
+  const mealQuery = new URLSearchParams({
+    start_date: localDateValue(mealStart),
+    end_date: end,
+    limit: "500",
+  });
+  const [records, meals] = await Promise.all([
+    request(`/api/data?${query}`),
+    request(`/users/${encodeURIComponent(userId)}/food-entries?${mealQuery}`),
+  ]);
+  const foodsByDate = {};
+  for (const meal of meals) {
+    const day = recordedKoreaDate(meal.recorded_at);
+    if (day < start || day > end) continue;
+    (foodsByDate[day] ||= []).push({
+      name: meal.food_name,
+      calories: meal.nutrients?.calories_kcal,
+    });
+  }
+  Object.values(foodsByDate).forEach((foods) => foods.reverse());
+  renderDataList(records, foodsByDate);
 }
 
 async function refreshDataView() {
@@ -798,7 +832,15 @@ async function editDataRecord(recordId) {
 function renderMessages() {
   const container = document.getElementById("chat-messages");
   if (!activeMessages.length) {
-    container.innerHTML = '<p class="empty-state chat-empty">예: “오늘 먹은 음식과 열량을 알려줘.”</p>';
+    container.innerHTML = `<div class="empty-state chat-empty">
+      <p>기록 분석부터 식단 아이디어까지 자유롭게 물어보세요.</p>
+      <div class="chat-prompt-list" aria-label="질문 예시">
+        <button type="button" class="chat-prompt" data-chat-prompt="내 식사 기록을 바탕으로 균형 잡힌 저녁 메뉴를 추천해줘.">균형 잡힌 저녁 메뉴 추천</button>
+        <button type="button" class="chat-prompt" data-chat-prompt="한국 음식으로 일주일 식단을 짜줘. 내 기록에서 참고할 점도 알려줘.">일주일 식단 아이디어</button>
+        <button type="button" class="chat-prompt" data-chat-prompt="단백질이 풍부한 한국 음식과 간단한 조리법을 알려줘.">영양·조리법 질문</button>
+        <button type="button" class="chat-prompt" data-chat-prompt="내 식사 기록에서 반복되는 음식이나 식사 습관을 요약해줘.">식사 습관 살펴보기</button>
+      </div>
+    </div>`;
     return;
   }
   container.innerHTML = activeMessages.map((message) => `
@@ -1014,21 +1056,21 @@ document.getElementById("weather-recommend-button").addEventListener("click", as
   const message = document.getElementById("weather-recommend-message");
   const file = document.getElementById("weather-csv-file").files[0];
   const targetDate = document.getElementById("weather-target-date").value;
-  if (!targetDate) {
+  if (file && !targetDate) {
     setMessage(message, "추천 날짜를 선택해 주세요.", true);
     return;
   }
   button.disabled = true;
-    setMessage(message, file ? "CSV의 날씨를 분석하고 음식 후보를 찾는 중..." : "저장된 날씨를 확인하고 음식 후보를 찾는 중...");
+    setMessage(message, file ? "CSV 날씨를 분석하고 음식 후보를 찾는 중..." : "Open-Meteo에서 창원 날씨를 가져오는 중...");
   try {
-    let path = "/api/weather/recommend-saved";
-    let payload = { user_id: currentUserId(), target_date: targetDate };
+    let path = "/api/weather/open-meteo/recommend";
+    let payload = { user_id: currentUserId() };
     if (file) {
       const bytes = await file.arrayBuffer();
       let csvText = new TextDecoder("utf-8").decode(bytes);
       if (csvText.includes("\uFFFD")) csvText = new TextDecoder("euc-kr").decode(bytes);
       path = "/api/weather/csv/recommend";
-      payload = { ...payload, csv_text: csvText };
+      payload = { ...payload, target_date: targetDate, csv_text: csvText };
     }
     const result = await request(path, {
       method: "POST",
@@ -1042,10 +1084,10 @@ document.getElementById("weather-recommend-button").addEventListener("click", as
       ? result.foods.map((food) => `<article class="weather-food-card"><strong>${escapeHtml(food.food_name)}</strong><span>${number(food.calories_kcal)} kcal</span><p>단백질 ${number(food.protein_g)} g · 탄수화물 ${number(food.carbohydrate_g)} g · 기준 ${number(food.nutrient_basis_g)} g<br>${escapeHtml(food.reason || "날씨 조건에 맞는 메뉴 후보입니다.")}</p></article>`).join("")
       : '<p class="empty-state">조건에 맞는 식품 후보가 없습니다. 다른 날짜나 CSV 자료로 다시 시도해 보세요.</p>';
     const weather = result.weather || {};
-    const sourceLabel = file ? "업로드한 CSV" : "저장된 날씨 자료";
+    const sourceLabel = file ? "CSV" : (weather.source || "Open-Meteo");
     const humidity = weather.humidity_percent == null ? "" : `<div class="metric-card"><span>습도</span><strong>${number(weather.humidity_percent)}<small>%</small></strong></div>`;
     document.getElementById("weather-recommend-result").innerHTML = `
-      <div class="weather-summary-head"><strong>${escapeHtml(result.target_date)} · ${escapeHtml(weather.city || "창원")}</strong><span class="weather-source-tag">${sourceLabel}</span></div>
+      <div class="weather-summary-head"><strong>${escapeHtml(result.target_date)} · ${escapeHtml(weather.city || "창원")} · ${escapeHtml(weather.condition || "")}</strong><span class="weather-source-tag">${sourceLabel}</span></div>
       <div class="metrics-grid weather-metrics">
         <div class="metric-card"><span>평균 기온</span><strong>${number(weather.temperature_c)}<small>°C</small></strong></div>
         <div class="metric-card"><span>강수량</span><strong>${number(weather.precipitation_mm)}<small>mm</small></strong></div>
@@ -1174,6 +1216,14 @@ document.getElementById("chat-form").addEventListener("submit", async (event) =>
   } finally {
     sendButton.disabled = false;
   }
+});
+
+document.getElementById("chat-messages").addEventListener("click", (event) => {
+  const prompt = event.target.closest("[data-chat-prompt]");
+  if (!prompt) return;
+  const input = document.getElementById("chat-input");
+  input.value = prompt.dataset.chatPrompt;
+  input.focus();
 });
 
 function localDateTimeValue(date) {

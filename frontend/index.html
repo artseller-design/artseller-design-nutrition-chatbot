@@ -252,20 +252,17 @@
           <section class="panel weather-controls">
             <div class="weather-panel-title">
               <span class="weather-step">01</span>
-              <div><p class="eyebrow">날씨 정보</p><h3>날짜와 자료 선택</h3></div>
+              <div><p class="eyebrow">날씨 정보</p><h3>자동 날씨 조회</h3></div>
             </div>
-            <label class="field"><span>날씨 기준 날짜 <small>ASOS 일자료는 보통 전일까지 제공</small></span><input id="weather-target-date" type="date" required></label>
-            <label class="field weather-file-field"><span>ASOS 일자료 CSV <small>선택 사항</small></span><input id="weather-csv-file" type="file" accept=".csv,text/csv"></label>
-            <p class="weather-source-note">CSV를 선택하면 해당 파일을 사용합니다. 비워 두면 서버에 저장된 관측·예보를 사용합니다. KMA 키를 설정하면 창원 관측 자료도 자동으로 가져옵니다.</p>
-            <button id="weather-recommend-button" class="button button-primary weather-submit" type="button"><span>날씨에 맞는 음식 찾기</span><span aria-hidden="true">→</span></button>
+            <label class="field"><span>추천 기준 날짜 <small>자동 조회는 오늘 창원 날씨를 사용합니다</small></span><input id="weather-target-date" type="date" required></label>
+            <label class="field weather-file-field"><span>과거 날씨 CSV 직접 사용 <small>선택 사항</small></span><input id="weather-csv-file" type="file" accept=".csv,text/csv"></label>
+            <p class="weather-source-note">파일을 선택하지 않으면 Open-Meteo에서 창원 날씨를 자동으로 가져옵니다. 별도 가입이나 인증키가 필요 없습니다. CSV를 선택하면 해당 날짜의 자료를 사용합니다.</p>
+            <button id="weather-recommend-button" class="button button-primary weather-submit" type="button"><span>현재 날씨로 음식 추천받기</span><span aria-hidden="true">→</span></button>
             <p id="weather-recommend-message" class="message" role="status"></p>
             <details class="weather-download-details">
-              <summary>CSV 없이 자동으로 날씨 연결하기</summary>
+              <summary>자동 날씨 제공 방식</summary>
               <div class="weather-data-links">
-                <a href="https://www.data.go.kr/data/15059093/openapi.do" target="_blank" rel="noopener noreferrer">공공데이터포털 기상청 ASOS 일자료 API 신청·인증키 발급 ↗</a>
-                <small>로그인 후 활용신청에서 승인받고 인증키를 발급하세요. `backend/.env`의 `KMA_API_KEY`에 키를 넣고 서버를 재시작하면 창원(155) 최근 관측 자료를 주기적으로 저장합니다. 키는 프런트엔드에 입력하거나 공개하지 마세요.</small>
-                <a href="https://apihub.kma.go.kr/join.do" target="_blank" rel="noopener noreferrer">기상청 API허브 회원가입·인증키 ↗</a>
-                <small>중기기온예보 자동 수집에는 API허브 키를 `KMA_APIHUB_KEY`에 설정합니다. ASOS 일자료용 `KMA_API_KEY`와는 서로 다른 키입니다.</small>
+                <small>Open-Meteo에서 창원 현재 및 최근 날씨를 자동 조회합니다. 비상업적 이용에는 가입이나 API 키가 필요하지 않습니다.</small>
               </div>
             </details>
             <details class="weather-download-details">
@@ -306,15 +303,23 @@
               <span id="chat-context-status" class="context-badge">최근 30일 식사·칼로리 기록</span>
             </div>
             <div id="chat-messages" class="chat-messages" aria-live="polite">
-              <p class="empty-state chat-empty">예: “오늘 먹은 음식과 열량을 알려줘.”</p>
+              <div class="empty-state chat-empty">
+                <p>기록 분석부터 식단 아이디어까지 자유롭게 물어보세요.</p>
+                <div class="chat-prompt-list" aria-label="질문 예시">
+                  <button type="button" class="chat-prompt" data-chat-prompt="내 식사 기록을 바탕으로 균형 잡힌 저녁 메뉴를 추천해줘.">균형 잡힌 저녁 메뉴 추천</button>
+                  <button type="button" class="chat-prompt" data-chat-prompt="한국 음식으로 일주일 식단을 짜줘. 내 기록에서 참고할 점도 알려줘.">일주일 식단 아이디어</button>
+                  <button type="button" class="chat-prompt" data-chat-prompt="단백질이 풍부한 한국 음식과 간단한 조리법을 알려줘.">영양·조리법 질문</button>
+                  <button type="button" class="chat-prompt" data-chat-prompt="내 식사 기록에서 반복되는 음식이나 식사 습관을 요약해줘.">식사 습관 살펴보기</button>
+                </div>
+              </div>
             </div>
             <p id="chat-message" class="message" role="status"></p>
             <form id="chat-form" class="chat-form">
               <label class="visually-hidden" for="chat-input">AI에게 질문</label>
-              <textarea id="chat-input" rows="2" maxlength="12000" placeholder="식사 기록이나 칼로리 추세에 대해 질문하세요..." required></textarea>
+              <textarea id="chat-input" rows="2" maxlength="12000" placeholder="식단·영양·조리법·식사 습관·날씨별 메뉴 등 무엇이든 질문하세요..." required></textarea>
               <button id="chat-send-button" class="button button-primary" type="submit">보내기</button>
             </form>
-            <p class="chat-footnote">답변은 최근 30일 식사·열량 기록과 저장된 날씨 관측·추천에 근거합니다. 결측 날씨는 관측값 0으로 해석하지 않습니다.</p>
+            <p class="chat-footnote">식사 기록 분석은 최근 30일 저장 데이터에 근거하고, 일반 영양·조리 질문은 일반 정보로 답합니다. 날씨 관련 답변은 저장된 관측·추천 자료가 있을 때 이를 활용합니다.</p>
           </section>
         </div>
       </section>

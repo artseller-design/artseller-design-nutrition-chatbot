@@ -3,12 +3,15 @@
 import csv
 import io
 from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Query
+import httpx
 
 from app.firebase import get_firestore, get_user_collection
 from app.models import (
     KmaWeatherSyncRequest,
+    OpenMeteoWeatherRecommendationRequest,
     SavedWeatherRecommendationRequest,
     WeatherCsvRecommendationRequest,
     WeatherLogInput,
@@ -18,6 +21,90 @@ from app.services.food_api import search_foods
 from app.services.weather_csv import normalize_weather_rows, save_weather_rows
 
 router = APIRouter(prefix="/api/weather", tags=["날씨"])
+
+
+@router.post("/open-meteo/recommend")
+async def recommend_from_open_meteo(request: OpenMeteoWeatherRecommendationRequest):
+    """Fetch current/recent Changwon weather from Open-Meteo and recommend foods."""
+    today = datetime.now(ZoneInfo("Asia/Seoul")).date()
+    params = {
+        "latitude": 35.228,
+        "longitude": 128.681,
+        "daily": "temperature_2m_mean,precipitation_sum,relative_humidity_2m_mean",
+        "current": "temperature_2m,relative_humidity_2m,precipitation,weather_code",
+        "past_days": 6,
+        "forecast_days": 1,
+        "timezone": "Asia/Seoul",
+        "temperature_unit": "celsius",
+        "precipitation_unit": "mm",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get("https://api.open-meteo.com/v1/forecast", params=params)
+            response.raise_for_status()
+            payload = response.json()
+    except (httpx.HTTPError, ValueError) as error:
+        raise HTTPException(status_code=502, detail="Open-Meteo 날씨 정보를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.") from error
+
+    daily = payload.get("daily", {})
+    dates = daily.get("time", [])
+    temperatures = daily.get("temperature_2m_mean", [])
+    precipitation = daily.get("precipitation_sum", [])
+    humidity = daily.get("relative_humidity_2m_mean", [])
+    rows = []
+    current = payload.get("current", {})
+    for index, day in enumerate(dates):
+        temperature = temperatures[index] if index < len(temperatures) else None
+        if temperature is None:
+            continue
+        rain = precipitation[index] if index < len(precipitation) else None
+        humid = humidity[index] if index < len(humidity) else None
+        if day == today.isoformat():
+            temperature = current.get("temperature_2m", temperature)
+            rain = current.get("precipitation", rain)
+            humid = current.get("relative_humidity_2m", humid)
+        rows.append({
+            "tm": day,
+            "avgTa": temperature,
+            "sumRn": rain if rain is not None else 0,
+            "avgRhm": humid if humid is not None else "",
+            "stnNm": "창원",
+        })
+    if today.isoformat() not in {row["tm"] for row in rows}:
+        raise HTTPException(status_code=502, detail="오늘 창원 날씨 자료가 응답에 포함되지 않았습니다.")
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=["tm", "avgTa", "sumRn", "avgRhm", "stnNm"])
+    writer.writeheader()
+    writer.writerows(rows)
+    result = await recommend_from_weather_csv(
+        WeatherCsvRecommendationRequest(user_id=request.user_id, target_date=today, csv_text=output.getvalue()),
+        persist_observations=False,
+    )
+    result["weather"]["source"] = "Open-Meteo"
+    result["weather"]["city"] = "창원"
+    result["weather"]["condition"] = _open_meteo_condition(current.get("weather_code"))
+    return result
+
+
+def _open_meteo_condition(code: int | None) -> str:
+    if code is None:
+        return "날씨"
+    if code == 0:
+        return "맑음"
+    if code in {1, 2, 3}:
+        return "구름 많음"
+    if code in {45, 48}:
+        return "안개"
+    if code in {51, 53, 55, 56, 57}:
+        return "이슬비"
+    if code in {61, 63, 65, 66, 67, 80, 81, 82}:
+        return "비"
+    if code in {71, 73, 75, 77, 85, 86}:
+        return "눈"
+    if code in {95, 96, 99}:
+        return "뇌우"
+    return "흐림"
 
 
 def _csv_number(value: str | None) -> float | None:

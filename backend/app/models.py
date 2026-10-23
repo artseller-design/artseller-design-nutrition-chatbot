@@ -184,6 +184,10 @@ class SavedWeatherRecommendationRequest(BaseModel):
     target_date: date
 
 
+class OpenMeteoWeatherRecommendationRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=128)
+
+
 class DietLogInput(BaseModel):
     """사용자가 먹은 음식 한 건과 영양 정보."""
 
