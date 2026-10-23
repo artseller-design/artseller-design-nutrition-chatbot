@@ -190,6 +190,17 @@ h1, h2, h3, p { margin-top: 0; }
 .metric-card strong { display: block; margin-top: 3px; color: var(--ink); font-size: 20px; letter-spacing: -0.04em; }
 .metric-card strong small { margin-left: 4px; color: var(--muted); font-size: 10px; font-weight: 500; letter-spacing: 0; }
 .metric-card p { margin: 1px 0 0; color: #939b92; font-size: 10px; }
+.nutrient-check-section { margin-top: 17px; padding: 13px; border: 1px solid #e8eee6; border-radius: 11px; background: #fbfcfa; }
+.nutrient-check-section h3 { margin: 0 0 10px; font-size: 12px; }
+.nutrient-check { display: grid; gap: 6px; padding: 9px 0; border-top: 1px solid #edf0eb; }
+.nutrient-check > div:first-child { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+.nutrient-check > div:first-child span, .nutrient-check small { color: var(--muted); font-size: 10px; }
+.nutrient-check.is-low small { color: #a35f32; }
+.nutrient-check-track { height: 6px; overflow: hidden; border-radius: 99px; background: #e9eee7; }
+.nutrient-check-track i { display: block; height: 100%; border-radius: inherit; background: #7ca77d; }
+.nutrient-check.is-low .nutrient-check-track i { background: #d49a58; }
+.summary-hint { margin: 7px 0 0; color: #929a91; font-size: 10px; line-height: 1.6; }
+.summary-hint a { color: var(--green); text-decoration: underline; }
 .daily-section { margin-top: 17px; }
 .daily-section h3 { margin-bottom: 7px; font-size: 12px; }
 .daily-list { margin: 0; padding: 0; list-style: none; }

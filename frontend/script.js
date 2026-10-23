@@ -626,6 +626,26 @@ async function loadSummary() {
       </div>`;
   }).join("");
   const days = Object.entries(summary.daily_entry_counts || {});
+  const periodDays = Math.max(1, Math.round((new Date(`${end}T12:00:00`) - new Date(`${start}T12:00:00`)) / 86400000) + 1);
+  const referenceNutrients = [
+    { key: "protein_g", name: "단백질", unit: "g", target: 50 },
+    { key: "carbohydrate_g", name: "탄수화물", unit: "g", target: 130 },
+  ];
+  const nutrientChecks = periodDays === 7 && summary.entry_count > 0
+    ? referenceNutrients.filter(({ key }) => Object.hasOwn(summary.nutrient_totals || {}, key)).map(({ key, name, unit, target }) => {
+      const average = Number(summary.daily_nutrient_averages[key] || 0);
+      const percent = Math.min(100, Math.round(average / target * 100));
+      const isLow = average < target;
+      return `<div class="nutrient-check ${isLow ? "is-low" : "is-ok"}">
+        <div><strong>${name}</strong><span>일평균 ${formatNumber(average)} / 참고 ${formatNumber(target)} ${unit}</span></div>
+        <div class="nutrient-check-track"><i style="width:${percent}%"></i></div>
+        <small>${isLow ? `참고값보다 ${formatNumber(target - average)} ${unit} 적게 기록됨` : "참고값 이상 기록"}</small>
+      </div>`;
+    }).join("")
+    : "";
+  const nutrientCheckSection = periodDays !== 7
+    ? `<section class="nutrient-check-section"><h3>7일 영양소 확인</h3><p class="summary-hint">시작일과 종료일을 7일 범위로 선택하면 기록된 영양소의 일평균을 참고값과 비교합니다.</p></section>`
+    : `<section class="nutrient-check-section"><h3>7일 영양소 확인</h3>${nutrientChecks || '<p class="summary-hint">이 기간은 분석할 식사 기록이나 영양 수치가 없습니다.</p>'}<p class="summary-hint">일반 성인 참고 예시(단백질 50g, 탄수화물 130g)와 비교합니다. 개인별 권장량이 아니며, 영양정보가 없는 식사와 미기록일은 실제 섭취량을 반영하지 못할 수 있습니다. <a href="https://www.kns.or.kr/fileroom/fileroom_view.asp?BoardID=Kdr&amp;idx=168" target="_blank" rel="noopener noreferrer">2025 한국인 영양소 섭취기준</a></p></section>`;
   const dailyRows = days.length
     ? days.map(([day, count]) => `<li><time>${escapeHtml(day)}</time><span>${count}끼 식사</span></li>`).join("")
     : '<li class="no-days">아직 기록된 식사가 없습니다.</li>';
@@ -633,6 +653,7 @@ async function loadSummary() {
   summaryContent.innerHTML = `
     <div class="summary-total"><strong>${summary.entry_count}</strong><span>끼 식사 · ${summary.food_entry_count ?? summary.entry_count}개 음식 기록</span></div>
     <div class="metrics-grid">${metrics}</div>
+    ${nutrientCheckSection}
     <div class="daily-section">
       <h3>날짜별 기록</h3>
       <ul class="daily-list">${dailyRows}</ul>
@@ -1489,7 +1510,9 @@ document.getElementById("recorded-at").value = localDateTimeValue(new Date());
 const latestWeatherDate = new Date();
 latestWeatherDate.setDate(latestWeatherDate.getDate() - 1);
 document.getElementById("weather-target-date").value = localDateValue(latestWeatherDate);
-document.getElementById("start-date").value = today;
+const initialNutritionStart = new Date(`${today}T12:00:00`);
+initialNutritionStart.setDate(initialNutritionStart.getDate() - 6);
+document.getElementById("start-date").value = localDateValue(initialNutritionStart);
 document.getElementById("end-date").value = today;
 document.getElementById("data-date").value = today;
 document.getElementById("data-start-date").value = localDateValue(initialDataStart);
