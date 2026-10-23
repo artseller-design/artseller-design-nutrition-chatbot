@@ -244,6 +244,13 @@ h1, h2, h3, p { margin-top: 0; }
 .chat-prompt-list { display: flex; max-width: 560px; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .chat-prompt { padding: 8px 11px; border: 1px solid #dfe8dc; border-radius: 999px; background: #fff; color: #456f51; cursor: pointer; font: inherit; font-size: 12px; }
 .chat-prompt:hover, .chat-prompt:focus-visible { border-color: #456f51; background: #f0f5ef; }
+.weather-history-panel { margin-top: 18px; }
+.weather-recommendation-history { display: grid; max-height: 520px; gap: 8px; overflow-y: auto; }
+.weather-history-card { padding: 12px 14px; border: 1px solid #e9ede7; border-radius: 10px; background: #fff; }
+.weather-history-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
+.weather-history-card-head time { color: #456f51; font-weight: 700; }
+.weather-history-card p { margin: 6px 0 3px; color: var(--ink); font-size: 12px; }
+.weather-history-card small { color: var(--muted); font-size: 10px; }
 .chat-bubble { max-width: 88%; padding: 11px 13px; border-radius: 13px; }
 .chat-bubble > span { display: block; margin-bottom: 4px; color: #89938a; font-size: 9px; font-weight: 700; }
 .chat-bubble p { margin: 0; color: #465047; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }

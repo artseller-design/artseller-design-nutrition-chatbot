@@ -23,6 +23,21 @@ from app.services.weather_csv import normalize_weather_rows, save_weather_rows
 router = APIRouter(prefix="/api/weather", tags=["날씨"])
 
 
+@router.get("/recommendations")
+def get_weather_recommendations(
+    user_id: str = Query(min_length=1),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """List saved weather-based meal recommendations, newest first."""
+    db = get_firestore()
+    if db is None:
+        raise HTTPException(status_code=503, detail="Firestore에 연결되지 않았습니다.")
+    collection = db.collection("users").document(user_id).collection("weather_recommendations")
+    rows = [{"id": doc.id, **(doc.to_dict() or {})} for doc in collection.stream()]
+    rows.sort(key=lambda item: str(item.get("target_date", "")), reverse=True)
+    return rows[:limit]
+
+
 @router.post("/open-meteo/recommend")
 async def recommend_from_open_meteo(request: OpenMeteoWeatherRecommendationRequest):
     """Fetch current/recent Changwon weather from Open-Meteo and recommend foods."""

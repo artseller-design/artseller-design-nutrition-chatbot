@@ -902,6 +902,35 @@ function startNewConversation() {
   document.getElementById("chat-input").focus();
 }
 
+async function loadWeatherRecommendationHistory() {
+  const container = document.getElementById("weather-recommendation-history");
+  const message = document.getElementById("weather-recommendation-history-message");
+  try {
+    const query = new URLSearchParams({ user_id: currentUserId(), limit: "500" });
+    const records = await request(`/api/weather/recommendations?${query}`);
+    document.getElementById("weather-recommendation-count").textContent = records.length;
+    if (!records.length) {
+      container.innerHTML = '<p class="empty-state">저장된 날씨 추천 기록이 없습니다.</p>';
+      setMessage(message, "");
+      return;
+    }
+    container.innerHTML = records.map((record) => {
+      const weather = record.weather || {};
+      const menus = (record.foods || []).map((food) => escapeHtml(food.food_name)).join(" · ");
+      const synthetic = record.is_synthetic ? '<span class="weather-source-tag">가상 데이터</span>' : "";
+      return `<article class="weather-history-card">
+        <div class="weather-history-card-head"><time>${escapeHtml(record.target_date || "날짜 없음")}</time>${synthetic}<span>${escapeHtml(weather.city || "창원")} · ${number(weather.temperature_c)}°C · 강수 ${number(weather.precipitation_mm)} mm</span></div>
+        <p>${menus || "추천 음식 정보 없음"}</p>
+        <small>${escapeHtml(record.recommendation_reason || "날씨 조건을 반영한 메뉴 추천입니다.")}</small>
+      </article>`;
+    }).join("");
+    setMessage(message, "");
+  } catch (error) {
+    container.innerHTML = `<p class="empty-state error">${escapeHtml(error.message)}</p>`;
+    setMessage(message, error.message, true);
+  }
+}
+
 entryForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   setMessage(formMessage, "저장 중...");
@@ -1048,6 +1077,7 @@ document.querySelectorAll("[data-view-target]").forEach((button) => {
     });
     if (targetId === "data-view") refreshDataView();
     if (targetId === "chat-view") loadConversationHistory();
+    if (targetId === "weather-recommend-view") loadWeatherRecommendationHistory();
   });
 });
 
@@ -1097,6 +1127,7 @@ document.getElementById("weather-recommend-button").addEventListener("click", as
       <h3 class="weather-foods-title">오늘의 메뉴 후보</h3><div class="weather-food-list">${foods}</div>
       <ul class="weather-quality"><li>최근 7일 관측 ${number(result.recent_weather_days)}일</li><li>누락 ${number(result.missing_days_in_recent_week)}일</li><li>당일 중복 ${number(result.duplicate_rows_for_target_date)}행</li></ul>
       <ul class="summary-notes"><li>날씨 기준의 참고용 음식 후보입니다. 개인의 알레르기나 건강 상태는 반영하지 않습니다.</li><li>기상 기록의 결측·중복 정보를 함께 표시하며, 장기 계절성 및 이상치 검정은 별도로 수행하지 않습니다.</li></ul>`;
+    await loadWeatherRecommendationHistory();
     setMessage(message, file ? "CSV 날씨를 분석해 추천 결과를 만들었습니다." : "저장된 날씨 자료로 추천 결과를 만들었습니다.");
   } catch (error) {
     setMessage(message, error.message, true);
