@@ -741,7 +741,7 @@ async function refreshDashboard() {
     const foods = foodsResult.value;
     const todayFoods = foods.filter((food) => recordedKoreaDate(food.recorded_at) === today);
     const todayMeals = new Set(todayFoods.map((food) => food.meal_id || food.id));
-    document.getElementById("dashboard-meal-count").textContent = `${todayMeals.size}<small> 끼</small>`;
+    document.getElementById("dashboard-meal-count").innerHTML = `${todayMeals.size}<small> 끼</small>`;
     const note = document.querySelector("#dashboard-meal-count + small");
     note.textContent = `${todayFoods.length}개 음식 기록`;
     const meals = new Map();
