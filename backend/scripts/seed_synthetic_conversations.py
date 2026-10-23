@@ -13,6 +13,7 @@ API_BASE = "http://127.0.0.1:8000"
 USER_ID = "demo-user"
 KST = timezone(timedelta(hours=9))
 SYNTHETIC_TITLE_PREFIX = "\uac00\uc0c1 \ub300\ud654 \u00b7 "
+TARGET_SYNTHETIC_CHATS = 100
 
 
 def get_json(path: str):
@@ -56,6 +57,9 @@ def main() -> None:
         f"/api/conversations?{urllib.parse.urlencode({'user_id': USER_ID, 'limit': 200})}"
     )
     existing_titles = {row.get("title", "") for row in existing}
+    synthetic_titles = {
+        title for title in existing_titles if title.startswith(SYNTHETIC_TITLE_PREFIX)
+    }
     points_by_date = {row["date"]: row for row in points}
     food_by_date: dict[str, list[dict]] = {}
     protein_total = 0.0
@@ -126,6 +130,43 @@ def main() -> None:
         ),
     ]
 
+    # Fill the remaining history with one date-specific Korean chat per synthetic weather recommendation.
+    if len(synthetic_titles) < TARGET_SYNTHETIC_CHATS:
+        weather_query = urllib.parse.urlencode({"user_id": USER_ID, "limit": 500})
+        recommendations = get_json(f"/api/weather/recommendations?{weather_query}")
+        virtual_recommendations = sorted(
+            (row for row in recommendations if row.get("is_synthetic")),
+            key=lambda row: row.get("target_date", ""),
+        )
+        needed = TARGET_SYNTHETIC_CHATS - len(synthetic_titles)
+        added_weather_chats = 0
+        for recommendation in virtual_recommendations:
+            day = recommendation.get("target_date", "")
+            title = SYNTHETIC_TITLE_PREFIX + "\ub0a0\uc528 \uba54\ub274 \u00b7 " + day
+            if title in existing_titles:
+                continue
+            weather = recommendation.get("weather") or {}
+            menus = recommendation.get("foods") or []
+            menu_names = [item.get("food_name", "\uc74c\uc2dd") for item in menus]
+            question = (
+                f"{day} \ucc3d\uc6d0 \ub0a0\uc528\uc5d0 \uc5b4\uc6b8\ub9ac\ub294 \ud55c\uad6d \uba54\ub274\ub97c \ucd94\ucc9c\ud574\uc918."
+            )
+            answer = (
+                f"\uac00\uc0c1 \uc2dc\uc5f0 \ub2f5\ubcc0\uc785\ub2c8\ub2e4. {day} \ucc3d\uc6d0\uc758 \uac00\uc0c1 \uae30\uc0c1 \uc790\ub8cc\ub294 "
+                f"\uae30\uc628 {weather.get('temperature_c', '\ubbf8\uae30\ub85d')}\u00b0C, \uac15\uc218 {weather.get('precipitation_mm', '\ubbf8\uae30\ub85d')} mm\uc608\uc694. "
+                f"\ucd94\ucc9c \uba54\ub274\ub294 {', '.join(menu_names) if menu_names else '\uc800\uc7a5\ub41c \uba54\ub274 \uc815\ubcf4 \uc5c6\uc74c'}\uc785\ub2c8\ub2e4. "
+                f"\uc800\uc7a5\ub41c \ucd94\ucc9c \uc0ac\uc720: {recommendation.get('recommendation_reason', '\ub0a0\uc528 \uc870\uac74\uc744 \ubc18\uc601\ud55c \uba54\ub274 \uc81c\uc548')} "
+                "\uc774 \ub0a0\uc528\uc640 \uba54\ub274\ub294 \uc2e4\uc81c \uad00\uce21\uc774 \uc544\ub2cc \uac00\uc0c1 \uc2dc\uc5f4 \ub370\uc774\ud130\uc785\ub2c8\ub2e4."
+            )
+            chats.append((title[len(SYNTHETIC_TITLE_PREFIX):], question, answer))
+            added_weather_chats += 1
+            if added_weather_chats >= needed:
+                break
+        if added_weather_chats < needed:
+            raise RuntimeError(
+                f"가상 날씨 추천 자료가 부족합니다: {len(virtual_recommendations)}건"
+            )
+
     created = 0
     for title_suffix, question, answer in chats:
         title = SYNTHETIC_TITLE_PREFIX + title_suffix
@@ -137,7 +178,19 @@ def main() -> None:
             "messages": [message("user", question), message("assistant", answer)],
         })
         created += 1
-    print(f"Created {created} synthetic Korean conversations grounded in {len(points)} daily points and {len(foods)} food entries.")
+        existing_titles.add(title)
+    final = get_json(
+        f"/api/conversations?{urllib.parse.urlencode({'user_id': USER_ID, 'limit': 200})}"
+    )
+    final_synthetic_count = sum(
+        1 for row in final if (row.get("title") or "").startswith(SYNTHETIC_TITLE_PREFIX)
+    )
+    print(
+        f"Created {created} synthetic Korean conversations; "
+        f"verified total {final_synthetic_count}/{TARGET_SYNTHETIC_CHATS} for {USER_ID}."
+    )
+    if final_synthetic_count != TARGET_SYNTHETIC_CHATS:
+        raise RuntimeError(f"가상 대화가 목표 100건이 아닙니다: {final_synthetic_count}건")
 
 
 if __name__ == "__main__":
