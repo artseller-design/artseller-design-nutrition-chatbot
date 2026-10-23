@@ -645,7 +645,7 @@ async function refreshPage() {
   setMessage(formMessage, "");
   setMessage(summaryMessage, "");
   try {
-    const results = await Promise.allSettled([loadEntries(), loadSummary()]);
+    const results = await Promise.allSettled([loadEntries(), loadSummary(), refreshDashboard()]);
     const failed = results.find((result) => result.status === "rejected");
     if (failed) {
       if (results[0].status === "rejected") {
@@ -673,6 +673,114 @@ async function checkConnection() {
     connectionStatus.textContent = "API에 연결할 수 없습니다";
     connectionDot.classList.remove("connected");
     connectionDot.classList.add("warning");
+  }
+}
+
+async function refreshDashboard() {
+  const today = localDateValue(new Date());
+  const weekStartDate = new Date(`${today}T12:00:00`);
+  weekStartDate.setDate(weekStartDate.getDate() - 6);
+  const weekStart = localDateValue(weekStartDate);
+  document.getElementById("dashboard-date").textContent = new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric", month: "long", day: "numeric", weekday: "long",
+  }).format(new Date(`${today}T12:00:00`));
+  const userId = encodeURIComponent(currentUserId());
+  const params = new URLSearchParams({ user_id: currentUserId(), start_date: weekStart, end_date: today, limit: "500" });
+  const [pointsResult, foodsResult, recommendationsResult] = await Promise.allSettled([
+    request(`/api/data?${params}`),
+    request(`/users/${userId}/food-entries?${new URLSearchParams({ start_date: weekStart, end_date: today, limit: "500" })}`),
+    request(`/api/weather/recommendations?${new URLSearchParams({ user_id: currentUserId(), limit: "500" })}`),
+  ]);
+
+  if (pointsResult.status === "fulfilled") {
+    const points = pointsResult.value.sort((a, b) => a.date.localeCompare(b.date));
+    const todayPoint = points.find((point) => point.date === today);
+    document.getElementById("dashboard-today-calories").innerHTML = todayPoint
+      ? `${formatNumber(todayPoint.value)}<small> kcal</small>` : "—";
+    document.getElementById("dashboard-today-calories-note").textContent = todayPoint
+      ? (String(todayPoint.memo || "").includes("가상") ? "가상 시연 데이터" : "저장된 하루 열량 합계")
+      : "오늘 열량 데이터가 아직 없습니다.";
+    const recent = points.slice(-7);
+    if (recent.length) {
+      const average = recent.reduce((sum, point) => sum + Number(point.value || 0), 0) / recent.length;
+      document.getElementById("dashboard-week-average").innerHTML = `${formatNumber(average)}<small> kcal</small>`;
+      const older = recent.slice(0, Math.floor(recent.length / 2));
+      const newer = recent.slice(Math.floor(recent.length / 2));
+      if (older.length && newer.length) {
+        const delta = newer.reduce((sum, point) => sum + Number(point.value || 0), 0) / newer.length
+          - older.reduce((sum, point) => sum + Number(point.value || 0), 0) / older.length;
+        document.getElementById("dashboard-trend-label").textContent = `앞선 기록보다 ${delta > 0 ? "+" : ""}${formatNumber(delta)} kcal · ${recent.length}일 기준`;
+      } else {
+        document.getElementById("dashboard-trend-label").textContent = `${recent.length}일의 기록 기준`;
+      }
+      const values = recent.map((point) => Number(point.value || 0));
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      document.getElementById("dashboard-chart").innerHTML = recent.map((point) => {
+        const value = Number(point.value || 0);
+        const height = max === min ? 72 : 28 + ((value - min) / (max - min)) * 68;
+        const date = new Date(`${point.date}T12:00:00`);
+        const label = new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric" }).format(date);
+        return `<div class="dashboard-chart-column" title="${escapeHtml(point.date)} · ${formatNumber(value)} kcal">
+          <span class="dashboard-chart-value">${formatNumber(value)}</span><div class="dashboard-chart-track"><i style="height:${height}%"></i></div><time>${escapeHtml(label)}</time>
+        </div>`;
+      }).join("");
+      document.getElementById("dashboard-chart").setAttribute("aria-label", `최근 ${recent.length}일 일일 열량: ${recent.map((point) => `${point.date} ${formatNumber(point.value)} kcal`).join(", ")}`);
+    } else {
+      document.getElementById("dashboard-week-average").textContent = "—";
+      document.getElementById("dashboard-trend-label").textContent = "아직 열량 기록이 없습니다.";
+      document.getElementById("dashboard-chart").innerHTML = '<p class="empty-state">열량 기록을 저장하면 최근 7일 흐름을 보여드려요.</p>';
+    }
+  } else {
+    document.getElementById("dashboard-today-calories").textContent = "—";
+    document.getElementById("dashboard-today-calories-note").textContent = "열량 기록을 불러오지 못했습니다.";
+    document.getElementById("dashboard-chart").innerHTML = `<p class="empty-state error">${escapeHtml(pointsResult.reason.message)}</p>`;
+  }
+
+  if (foodsResult.status === "fulfilled") {
+    const foods = foodsResult.value;
+    const todayFoods = foods.filter((food) => recordedKoreaDate(food.recorded_at) === today);
+    const todayMeals = new Set(todayFoods.map((food) => food.meal_id || food.id));
+    document.getElementById("dashboard-meal-count").textContent = `${todayMeals.size}<small> 끼</small>`;
+    const note = document.querySelector("#dashboard-meal-count + small");
+    note.textContent = `${todayFoods.length}개 음식 기록`;
+    const meals = new Map();
+    for (const food of foods) {
+      const key = food.meal_id || food.id;
+      if (!meals.has(key)) meals.set(key, []);
+      meals.get(key).push(food);
+    }
+    const recentMeals = [...meals.values()].sort((a, b) => b[0].recorded_at.localeCompare(a[0].recorded_at)).slice(0, 4);
+    document.getElementById("dashboard-foods").innerHTML = recentMeals.length
+      ? recentMeals.map((meal) => {
+        const first = meal[0];
+        const total = meal.reduce((sum, item) => sum + Number(item.nutrients?.calories_kcal || 0), 0);
+        const label = { breakfast: "아침", lunch: "점심", dinner: "저녁", snack: "간식" }[first.meal_type] || "식사";
+        const names = meal.map((item) => escapeHtml(item.food_name)).join(" · ");
+        const synthetic = meal.some((item) => item.source === "synthetic") ? '<span class="dashboard-synthetic-badge">가상</span>' : "";
+        return `<article class="dashboard-meal-row"><div><div class="dashboard-meal-meta"><span>${label}</span><time>${escapeHtml(formatDateTime(first.recorded_at))}</time>${synthetic}</div><strong>${names}</strong></div><b>${formatNumber(total)} kcal</b></article>`;
+      }).join("")
+      : '<p class="empty-state">최근 7일 식사 기록이 없습니다.</p>';
+  } else {
+    document.getElementById("dashboard-meal-count").textContent = "—";
+    document.getElementById("dashboard-foods").innerHTML = `<p class="empty-state error">${escapeHtml(foodsResult.reason.message)}</p>`;
+  }
+
+  if (recommendationsResult.status === "fulfilled") {
+    const latest = recommendationsResult.value[0];
+    const container = document.getElementById("dashboard-weather");
+    if (!latest) {
+      container.innerHTML = '<p class="empty-state">날씨 추천 기록이 아직 없습니다.</p>';
+    } else {
+      const weather = latest.weather || {};
+      const foods = (latest.foods || []).slice(0, 3);
+      container.innerHTML = `<div class="dashboard-weather-summary"><span>${escapeHtml(latest.target_date || "")} · ${escapeHtml(weather.city || "창원")}</span>${latest.is_synthetic ? '<b class="dashboard-synthetic-badge">가상 데이터</b>' : ""}</div>
+        <div class="dashboard-weather-condition">${formatNumber(weather.temperature_c)}° <span>기온</span><i>·</i>${formatNumber(weather.precipitation_mm)} mm <span>강수</span></div>
+        <div class="dashboard-weather-foods">${foods.map((food) => `<span>🍲 ${escapeHtml(food.food_name)}</span>`).join("")}</div>
+        <p>${escapeHtml(latest.recommendation_reason || "날씨를 고려한 한식 메뉴 추천입니다.")}</p>`;
+    }
+  } else {
+    document.getElementById("dashboard-weather").innerHTML = `<p class="empty-state error">${escapeHtml(recommendationsResult.reason.message)}</p>`;
   }
 }
 
@@ -1070,12 +1178,13 @@ document.querySelectorAll("[data-view-target]").forEach((button) => {
   button.addEventListener("click", () => {
     const targetId = button.dataset.viewTarget;
     document.querySelectorAll(".nav-tab").forEach((tab) => {
-      tab.classList.toggle("active", tab === button);
+      tab.classList.toggle("active", tab.dataset.viewTarget === targetId);
     });
     document.querySelectorAll(".app-view").forEach((view) => {
       view.hidden = view.id !== targetId;
     });
     if (targetId === "data-view") refreshDataView();
+    if (targetId === "dashboard-view") refreshDashboard();
     if (targetId === "chat-view") loadConversationHistory();
     if (targetId === "weather-recommend-view") loadWeatherRecommendationHistory();
   });
@@ -1128,6 +1237,7 @@ document.getElementById("weather-recommend-button").addEventListener("click", as
       <ul class="weather-quality"><li>최근 7일 관측 ${number(result.recent_weather_days)}일</li><li>누락 ${number(result.missing_days_in_recent_week)}일</li><li>당일 중복 ${number(result.duplicate_rows_for_target_date)}행</li></ul>
       <ul class="summary-notes"><li>날씨 기준의 참고용 음식 후보입니다. 개인의 알레르기나 건강 상태는 반영하지 않습니다.</li><li>기상 기록의 결측·중복 정보를 함께 표시하며, 장기 계절성 및 이상치 검정은 별도로 수행하지 않습니다.</li></ul>`;
     await loadWeatherRecommendationHistory();
+    await refreshDashboard();
     setMessage(message, file ? "CSV 날씨를 분석해 추천 결과를 만들었습니다." : "저장된 날씨 자료로 추천 결과를 만들었습니다.");
   } catch (error) {
     setMessage(message, error.message, true);
@@ -1160,6 +1270,7 @@ document.getElementById("data-form").addEventListener("submit", async (event) =>
     cancelDataEdit();
     setMessage(document.getElementById("data-form-message"), "데이터를 저장했습니다.");
     await refreshDataView();
+    await refreshDashboard();
   } catch (error) {
     setMessage(document.getElementById("data-form-message"), error.message, true);
   } finally {
@@ -1183,6 +1294,7 @@ document.getElementById("data-list").addEventListener("click", async (event) => 
         method: "DELETE",
       });
       await refreshDataView();
+      await refreshDashboard();
     }
   } catch (error) {
     setMessage(document.getElementById("data-form-message"), error.message, true);

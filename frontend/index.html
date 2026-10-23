@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f5f7f2">
     <title>영양 데이터 분석과 AI 채팅</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=5">
     <script src="config.js"></script>
-    <script src="script.js?v=4" defer></script>
+    <script src="script.js?v=5" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -50,13 +50,52 @@
       </section>
 
       <nav class="app-nav" aria-label="주요 화면">
-        <button class="nav-tab active" type="button" data-view-target="meals-view">식사 기록</button>
+        <button class="nav-tab active" type="button" data-view-target="dashboard-view">대시보드</button>
+        <button class="nav-tab" type="button" data-view-target="meals-view">식사 기록</button>
         <button class="nav-tab" type="button" data-view-target="data-view">데이터 관리·분석</button>
         <button class="nav-tab" type="button" data-view-target="weather-recommend-view">날씨 기반 추천</button>
         <button class="nav-tab" type="button" data-view-target="chat-view">AI 채팅·대화 기록</button>
       </nav>
 
-      <section id="meals-view" class="app-view">
+      <section id="dashboard-view" class="app-view dashboard-view">
+        <section class="dashboard-hero">
+          <div class="dashboard-hero-copy">
+            <p class="eyebrow">YOUR DAILY WELLNESS</p>
+            <h2>오늘의 기록을<br><span>한눈에 살펴보세요.</span></h2>
+            <p id="dashboard-date">식사와 열량 기록을 모아 보여드려요.</p>
+            <button class="button dashboard-hero-button" type="button" data-view-target="meals-view">오늘 식사 기록하기 <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="dashboard-hero-art" aria-hidden="true"><span>오늘</span><strong>밥</strong><i>✦</i></div>
+        </section>
+
+        <section class="dashboard-metrics" aria-label="오늘과 최근 기록 요약">
+          <article class="dashboard-stat"><span>오늘 칼로리 기록</span><strong id="dashboard-today-calories">—</strong><small id="dashboard-today-calories-note">기록을 불러오는 중</small></article>
+          <article class="dashboard-stat"><span>오늘 식사</span><strong id="dashboard-meal-count">—</strong><small>저장된 한 끼 기록</small></article>
+          <article class="dashboard-stat"><span>최근 7일 평균</span><strong id="dashboard-week-average">—</strong><small id="dashboard-trend-label">일일 열량 시계열 기준</small></article>
+        </section>
+
+        <div class="dashboard-content-grid">
+          <section class="panel dashboard-panel dashboard-chart-panel">
+            <div class="section-heading"><div><p class="eyebrow">LAST 7 DAYS</p><h2>일일 열량 흐름</h2></div><button class="text-link" type="button" data-view-target="data-view">데이터 분석 <span aria-hidden="true">↗</span></button></div>
+            <div id="dashboard-chart" class="dashboard-chart" role="img" aria-label="최근 7일 일일 열량 그래프"><p class="empty-state">열량 데이터를 불러오는 중...</p></div>
+            <p class="dashboard-chart-note">일일 열량 기록 기준이며, 식사 영양정보와 같은 섭취를 나타낼 수 있습니다.</p>
+          </section>
+          <section class="panel dashboard-panel dashboard-weather-panel">
+            <div class="section-heading"><div><p class="eyebrow">WEATHER TO TABLE</p><h2>날씨 메뉴 추천</h2></div><button class="text-link" type="button" data-view-target="weather-recommend-view">전체 보기 <span aria-hidden="true">↗</span></button></div>
+            <div id="dashboard-weather" class="dashboard-weather"><p class="empty-state">추천 기록을 불러오는 중...</p></div>
+          </section>
+          <section class="panel dashboard-panel dashboard-food-panel">
+            <div class="section-heading"><div><p class="eyebrow">RECENT MEALS</p><h2>최근 식사 기록</h2></div><button class="text-link" type="button" data-view-target="meals-view">기록 보기 <span aria-hidden="true">↗</span></button></div>
+            <div id="dashboard-foods" class="dashboard-foods"><p class="empty-state">식사 기록을 불러오는 중...</p></div>
+          </section>
+          <section class="dashboard-chat-callout">
+            <div><p class="eyebrow">ASK YOUR DATA</p><strong>식단과 기록이 궁금할 때 AI에게 물어보세요.</strong></div>
+            <button class="button dashboard-hero-button" type="button" data-view-target="chat-view">AI와 대화하기 <span aria-hidden="true">→</span></button>
+          </section>
+        </div>
+      </section>
+
+      <section id="meals-view" class="app-view" hidden>
       <div class="content-grid">
         <section class="panel form-panel">
           <div class="section-heading">
