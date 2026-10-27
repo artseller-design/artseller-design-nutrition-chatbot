@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f5f7f2">
     <title>영양 데이터 분석과 AI 채팅</title>
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
     <script src="config.js"></script>
-    <script src="script.js?v=9" defer></script>
+    <script src="script.js?v=10" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -365,9 +365,10 @@
           </section>
         </div>
         <section class="panel weather-history-panel">
-          <div class="section-heading"><div><p class="eyebrow">SAVED RECOMMENDATIONS</p><h3>날씨 추천 기록 <span id="weather-recommendation-count" class="count-badge">0</span></h3></div></div>
+          <div class="section-heading"><div><p class="eyebrow">YOUR WEATHER TABLE JOURNAL</p><h3>날씨가 골라준 한 끼 <span id="weather-recommendation-count" class="count-badge">0</span></h3><p class="history-intro">그날의 날씨와 함께, 추천받은 메뉴를 다시 살펴보세요.</p></div><span class="history-heading-mark" aria-hidden="true">☷</span></div>
           <p id="weather-recommendation-history-message" class="message" role="status"></p>
           <div id="weather-recommendation-history" class="weather-recommendation-history"><p class="empty-state">저장된 추천 기록을 불러오는 중...</p></div>
+          <nav id="weather-history-pagination" class="history-pagination" aria-label="날씨 추천 기록 페이지" hidden><span id="weather-history-range"></span><div><button id="weather-history-prev" type="button" class="history-page-button" aria-label="이전 추천 기록 페이지">← 이전</button><span id="weather-history-page"></span><button id="weather-history-next" type="button" class="history-page-button" aria-label="다음 추천 기록 페이지">다음 →</button></div></nav>
         </section>
       </section>
 

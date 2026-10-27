@@ -1035,6 +1035,8 @@ async function loadWeatherRecommendationHistory() {
   const number = (value) => value == null ? "미기록" : formatNumber(value);
   const container = document.getElementById("weather-recommendation-history");
   const message = document.getElementById("weather-recommendation-history-message");
+  const pagination = document.getElementById("weather-history-pagination");
+  pagination.hidden = true;
   try {
     const query = new URLSearchParams({ user_id: currentUserId(), limit: "500" });
     const records = await request(`/api/weather/recommendations?${query}`);
@@ -1044,16 +1046,29 @@ async function loadWeatherRecommendationHistory() {
       setMessage(message, "");
       return;
     }
-    container.innerHTML = records.map((record) => {
+    let page = 0;
+    const pageSize = 6;
+    function renderPage() {
+    container.innerHTML = records.slice(page * pageSize, (page + 1) * pageSize).map((record) => {
       const weather = record.weather || {};
-      const menus = (record.foods || []).map((food) => escapeHtml(food.food_name)).join(" · ");
+      const menus = (record.foods || []).map((food) => `<span class="history-menu-tag">${escapeHtml(food.food_name)}</span>`).join("");
       const synthetic = record.is_synthetic ? '<span class="weather-source-tag">가상 데이터</span>' : "";
       return `<article class="weather-history-card">
-        <div class="weather-history-card-head"><time>${escapeHtml(record.target_date || "날짜 없음")}</time>${synthetic}<span>${escapeHtml(weather.city || "창원")} · ${number(weather.temperature_c)}°C · 강수 ${number(weather.precipitation_mm)} mm</span></div>
-        <p>${menus || "추천 음식 정보 없음"}</p>
+        <div class="weather-history-card-head"><time>${escapeHtml(record.target_date || "날짜 없음")}</time>${synthetic}<span class="history-weather-symbol" aria-hidden="true">${Number(weather.precipitation_mm) > 0 ? "☂" : "☀"}</span></div>
+        <div class="history-weather-meta">${escapeHtml(weather.city || "창원")}<span>기온 ${number(weather.temperature_c)}°C</span><span>강수 ${number(weather.precipitation_mm)} mm</span></div>
+        <div class="history-menu-list">${menus || "추천 음식 정보 없음"}</div>
         <small>${escapeHtml(record.recommendation_reason || "날씨 조건을 반영한 메뉴 추천입니다.")}</small>
       </article>`;
     }).join("");
+    pagination.hidden = false;
+    document.getElementById("weather-history-range").textContent = `전체 ${records.length}개 중 ${page * pageSize + 1}–${Math.min((page + 1) * pageSize, records.length)}개`;
+    document.getElementById("weather-history-page").textContent = `${page + 1} / ${Math.ceil(records.length / pageSize)}`;
+    document.getElementById("weather-history-prev").disabled = page === 0;
+    document.getElementById("weather-history-next").disabled = (page + 1) * pageSize >= records.length;
+    }
+    document.getElementById("weather-history-prev").onclick = () => { if (page > 0) { page--; renderPage(); } };
+    document.getElementById("weather-history-next").onclick = () => { if ((page + 1) * pageSize < records.length) { page++; renderPage(); } };
+    renderPage();
     setMessage(message, "");
   } catch (error) {
     container.innerHTML = `<p class="empty-state error">${escapeHtml(error.message)}</p>`;
