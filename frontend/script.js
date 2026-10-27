@@ -1032,6 +1032,7 @@ function startNewConversation() {
 }
 
 async function loadWeatherRecommendationHistory() {
+  const number = (value) => value == null ? "미기록" : formatNumber(value);
   const container = document.getElementById("weather-recommendation-history");
   const message = document.getElementById("weather-recommendation-history-message");
   try {
@@ -1221,7 +1222,12 @@ document.getElementById("weather-recommend-button").addEventListener("click", as
     return;
   }
   button.disabled = true;
-    setMessage(message, file ? "CSV 날씨를 분석하고 음식 후보를 찾는 중..." : "Open-Meteo에서 창원 날씨를 가져오는 중...");
+  const resultPanel = document.getElementById("weather-recommend-result");
+  const previousReason = document.getElementById("recommend-weather-reason").textContent;
+  resultPanel.setAttribute("aria-busy", "true");
+  button.querySelector("span").textContent = "메뉴를 찾는 중...";
+  document.getElementById("recommend-weather-reason").textContent = file ? "CSV 날씨를 분석하고 메뉴를 고르고 있어요." : "창원 날씨를 확인하고 메뉴를 고르고 있어요.";
+  setMessage(message, "추천을 준비하고 있어요. 잠시만 기다려 주세요.");
   try {
     let path = "/api/weather/open-meteo/recommend";
     let payload = { user_id: currentUserId() };
@@ -1244,25 +1250,28 @@ document.getElementById("weather-recommend-button").addEventListener("click", as
       ? result.foods.map((food) => `<article class="weather-food-card"><strong>${escapeHtml(food.food_name)}</strong><span>${number(food.calories_kcal)} kcal</span><p>단백질 ${number(food.protein_g)} g · 탄수화물 ${number(food.carbohydrate_g)} g · 기준 ${number(food.nutrient_basis_g)} g<br>${escapeHtml(food.reason || "날씨 조건에 맞는 메뉴 후보입니다.")}</p></article>`).join("")
       : '<p class="empty-state">조건에 맞는 식품 후보가 없습니다. 다른 날짜나 CSV 자료로 다시 시도해 보세요.</p>';
     const weather = result.weather || {};
+    document.querySelector(".weather-scene").dataset.weather = Number(weather.precipitation_mm) > 0 ? "rainy" : "sunny";
     const sourceLabel = file ? "CSV" : (weather.source || "Open-Meteo");
-    const humidity = weather.humidity_percent == null ? "" : `<div class="metric-card"><span>습도</span><strong>${number(weather.humidity_percent)}<small>%</small></strong></div>`;
-    document.getElementById("weather-recommend-result").innerHTML = `
-      <div class="weather-summary-head"><strong>${escapeHtml(result.target_date)} · ${escapeHtml(weather.city || "창원")} · ${escapeHtml(weather.condition || "")}</strong><span class="weather-source-tag">${sourceLabel}</span></div>
-      <div class="metrics-grid weather-metrics">
-        <div class="metric-card"><span>평균 기온</span><strong>${number(weather.temperature_c)}<small>°C</small></strong></div>
-        <div class="metric-card"><span>강수량</span><strong>${number(weather.precipitation_mm)}<small>mm</small></strong></div>
-        ${humidity}
-      </div>
-      <p class="weather-reason">${escapeHtml(result.recommendation_reason || "날씨 특성을 기준으로 메뉴를 골랐습니다.")}</p>
-      <h3 class="weather-foods-title">오늘의 메뉴 후보</h3><div class="weather-food-list">${foods}</div>
-      <ul class="weather-quality"><li>최근 7일 관측 ${number(result.recent_weather_days)}일</li><li>누락 ${number(result.missing_days_in_recent_week)}일</li><li>당일 중복 ${number(result.duplicate_rows_for_target_date)}행</li></ul>
-      <ul class="summary-notes"><li>날씨 기준의 참고용 음식 후보입니다. 개인의 알레르기나 건강 상태는 반영하지 않습니다.</li><li>기상 기록의 결측·중복 정보를 함께 표시하며, 장기 계절성 및 이상치 검정은 별도로 수행하지 않습니다.</li></ul>`;
+    document.getElementById("recommend-weather-title").textContent = `${result.target_date} · ${weather.city || "창원"} · ${weather.condition || ""}`;
+    document.getElementById("recommend-weather-source").textContent = sourceLabel;
+    document.getElementById("recommend-temperature").innerHTML = `${number(weather.temperature_c)}<small>°C</small>`;
+    document.getElementById("recommend-rain").innerHTML = `${number(weather.precipitation_mm)}<small>mm</small>`;
+    document.getElementById("recommend-humidity").innerHTML = `${number(weather.humidity_percent)}<small>%</small>`;
+    document.getElementById("recommend-weather-reason").textContent = result.recommendation_reason || "날씨 특성을 기준으로 메뉴를 골랐습니다.";
+    document.getElementById("recommend-foods").innerHTML = foods;
+    document.getElementById("recommend-quality").innerHTML = `<li>최근 7일 관측 ${number(result.recent_weather_days)}일</li><li>누락 ${number(result.missing_days_in_recent_week)}일</li><li>당일 중복 ${number(result.duplicate_rows_for_target_date)}행</li>`;
+    document.getElementById("recommend-quality").hidden = false;
+    document.getElementById("recommend-notes").hidden = false;
+    button.dataset.hasResult = "true";
     await loadWeatherRecommendationHistory();
     await refreshDashboard();
     setMessage(message, file ? "CSV 날씨를 분석해 추천 결과를 만들었습니다." : "저장된 날씨 자료로 추천 결과를 만들었습니다.");
   } catch (error) {
+    document.getElementById("recommend-weather-reason").textContent = button.dataset.hasResult ? previousReason : "날씨를 불러오지 못했어요. 다시 시도해 주세요.";
     setMessage(message, error.message, true);
   } finally {
+    resultPanel.setAttribute("aria-busy", "false");
+    button.querySelector("span").textContent = button.dataset.hasResult ? "다시 추천받기" : "오늘의 메뉴 찾기";
     button.disabled = false;
   }
 });

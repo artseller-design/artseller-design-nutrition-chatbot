@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f5f7f2">
     <title>영양 데이터 분석과 AI 채팅</title>
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=9">
     <script src="config.js"></script>
-    <script src="script.js?v=5" defer></script>
+    <script src="script.js?v=9" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -61,11 +61,28 @@
         <section class="dashboard-hero">
           <div class="dashboard-hero-copy">
             <p class="eyebrow">YOUR DAILY WELLNESS</p>
-            <h2>오늘의 기록을<br><span>한눈에 살펴보세요.</span></h2>
+            <h2>잘 먹는 하루,<br><span>나를 돌보는 한 끼.</span></h2>
             <p id="dashboard-date">식사와 열량 기록을 모아 보여드려요.</p>
             <button class="button dashboard-hero-button" type="button" data-view-target="meals-view">오늘 식사 기록하기 <span aria-hidden="true">→</span></button>
           </div>
-          <div class="dashboard-hero-art" aria-hidden="true"><span>오늘</span><strong>밥</strong><i>✦</i></div>
+          <div class="food-scene" aria-hidden="true">
+            <span class="food-orbit orbit-one">✦</span><span class="food-orbit orbit-two">✧</span>
+            <span class="floating-food tomato"></span><span class="floating-food leaf leaf-one"></span><span class="floating-food leaf leaf-two"></span>
+            <svg class="food-plate" viewBox="0 0 300 260" fill="none">
+              <ellipse cx="151" cy="219" rx="107" ry="17" fill="#183c2b" opacity=".18"/>
+              <circle cx="150" cy="126" r="108" fill="#eee7d5"/>
+              <circle cx="150" cy="121" r="108" fill="#fffdf5"/>
+              <circle cx="150" cy="121" r="88" stroke="#e2d9c4" stroke-width="2"/>
+              <path d="M80 91C62 60 104 48 119 72C125 47 157 55 152 79C180 59 200 89 179 109C199 129 174 151 152 138C136 163 109 148 110 129C82 146 60 116 80 91Z" fill="#6e9758"/>
+              <path d="M90 93L146 125M113 76L135 121M163 86L144 122" stroke="#b6ca88" stroke-width="3" stroke-linecap="round"/>
+              <rect x="142" y="122" width="72" height="53" rx="19" transform="rotate(-24 142 122)" fill="#dc9068"/>
+              <path d="M155 133L184 158M168 126L197 151M181 120L207 143" stroke="#f8c5a3" stroke-width="5" stroke-linecap="round"/>
+              <circle cx="104" cy="155" r="24" fill="#f4cd64"/><circle cx="104" cy="155" r="15" fill="#fff1b2"/>
+              <circle cx="192" cy="83" r="21" fill="#d7654e"/><path d="M188 64L193 74L204 68" stroke="#406a3f" stroke-width="5" stroke-linecap="round"/>
+              <circle cx="136" cy="178" r="7" fill="#d7654e"/><circle cx="77" cy="120" r="6" fill="#d7654e"/>
+            </svg>
+            <span class="food-scene-caption">FRESH FOOD, GOOD MOOD</span>
+          </div>
         </section>
 
         <section class="dashboard-metrics" aria-label="오늘과 최근 기록 요약">
@@ -237,6 +254,18 @@
       </section>
 
       <section id="data-view" class="app-view" hidden>
+        <section class="analysis-hero" aria-labelledby="analysis-title">
+          <div class="analysis-hero-copy">
+            <p class="eyebrow">SMALL RECORDS, MEANINGFUL INSIGHTS</p>
+            <h2 id="analysis-title">한 끼의 기록이,<br><span>나의 흐름이 되도록.</span></h2>
+            <p>차곡차곡 쌓인 열량 기록에서 나만의 식사 패턴을 발견해 보세요.</p>
+            <div class="analysis-steps"><span>01 기록하기</span><i aria-hidden="true">→</i><span>02 기간 고르기</span><i aria-hidden="true">→</i><span>03 흐름 살펴보기</span></div>
+          </div>
+          <div class="analysis-art" aria-hidden="true">
+            <div class="analysis-art-card"><span>YOUR DAILY BALANCE</span><svg viewBox="0 0 240 110" fill="none"><path d="M10 25H230M10 55H230M10 85H230" stroke="#dce5d4" stroke-dasharray="4 5"/><path d="M12 79C39 79 35 42 65 48S98 83 124 59S151 26 177 36S205 57 228 18V102H12Z" fill="#e5edd9"/><path class="analysis-art-line" d="M12 79C39 79 35 42 65 48S98 83 124 59S151 26 177 36S205 57 228 18" stroke="#527b4e" stroke-width="3" stroke-linecap="round"/><circle cx="228" cy="18" r="5" fill="#cf9d50"/></svg><div class="analysis-art-bars"><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div></div>
+            <span class="analysis-art-leaf"></span><span class="analysis-art-spark">✦</span>
+          </div>
+        </section>
         <div class="data-layout">
           <section class="panel data-form-panel">
             <div class="section-heading">
@@ -244,6 +273,7 @@
               <span class="heading-icon" aria-hidden="true">＋</span>
             </div>
             <form id="data-form">
+              <p class="analysis-form-note">하루의 열량과 짧은 메모를 남겨보세요.</p>
               <label class="field"><span>날짜</span><input id="data-date" name="date" type="date" required></label>
               <label class="field data-spaced"><span>일일 섭취 열량 (kcal)</span><input id="data-value" name="value" type="number" min="0" max="1000000" step="any" required></label>
               <label class="field data-spaced"><span>메모</span><textarea id="data-memo" name="memo" rows="3" maxlength="2000" placeholder="기록의 맥락을 입력하세요"></textarea></label>
@@ -284,7 +314,7 @@
             <h2>날씨에 어울리는<br><span>한 끼를 찾아보세요.</span></h2>
             <p>선택한 날짜의 기온과 강수 정보를 바탕으로 식품 영양 데이터에서 메뉴 후보를 골라드립니다.</p>
           </div>
-          <div class="weather-hero-mark" aria-hidden="true"><span>☁</span><i>☀</i></div>
+          <div class="weather-scene" data-weather="sunny" aria-hidden="true"><span class="weather-sun"></span><span class="weather-cloud"></span><span class="rain-drop rain-one"></span><span class="rain-drop rain-two"></span><span class="rain-drop rain-three"></span><div class="warm-bowl"><span class="steam steam-one"></span><span class="steam steam-two"></span><span class="steam steam-three"></span></div><span class="weather-scene-caption">A LITTLE WARMTH ON YOUR TABLE</span></div>
         </section>
 
         <div class="weather-workspace">
@@ -296,7 +326,7 @@
             <label class="field"><span>추천 기준 날짜 <small>자동 조회는 오늘 창원 날씨를 사용합니다</small></span><input id="weather-target-date" type="date" required></label>
             <label class="field weather-file-field"><span>과거 날씨 CSV 직접 사용 <small>선택 사항</small></span><input id="weather-csv-file" type="file" accept=".csv,text/csv"></label>
             <p class="weather-source-note">파일을 선택하지 않으면 Open-Meteo에서 창원 날씨를 자동으로 가져옵니다. 별도 가입이나 인증키가 필요 없습니다. CSV를 선택하면 해당 날짜의 자료를 사용합니다.</p>
-            <button id="weather-recommend-button" class="button button-primary weather-submit" type="button"><span>현재 날씨로 음식 추천받기</span><span aria-hidden="true">→</span></button>
+            <button id="weather-recommend-button" class="button button-primary weather-submit" type="button"><span>오늘의 메뉴 찾기</span><span aria-hidden="true">→</span></button>
             <p id="weather-recommend-message" class="message" role="status"></p>
             <details class="weather-download-details">
               <summary>자동 날씨 제공 방식</summary>
@@ -319,8 +349,18 @@
               <span class="weather-step weather-step-result">02</span>
               <div><p class="eyebrow">YOUR WEATHER MENU</p><h3>추천 결과</h3></div>
             </div>
-            <div id="weather-recommend-result" class="weather-result-content">
-              <div class="weather-empty"><span aria-hidden="true">☀</span><strong>날씨를 확인하면 추천을 시작해요</strong><p>날짜를 고르고 버튼을 누르면 기상 요약과 음식 후보를 보여드립니다.</p></div>
+            <div id="weather-recommend-result" class="weather-result-content" aria-busy="false">
+              <div class="weather-summary-head"><strong id="recommend-weather-title">창원 날씨를 확인해 보세요</strong><span id="recommend-weather-source" class="weather-source-tag">조회 전</span></div>
+              <div class="metrics-grid weather-metrics">
+                <div class="metric-card"><span>기온</span><strong id="recommend-temperature">—<small>°C</small></strong></div>
+                <div class="metric-card"><span>강수량</span><strong id="recommend-rain">—<small>mm</small></strong></div>
+                <div class="metric-card"><span>습도</span><strong id="recommend-humidity">—<small>%</small></strong></div>
+              </div>
+              <p id="recommend-weather-reason" class="weather-reason" role="status">날씨를 확인하고, 오늘의 한 끼를 골라드릴게요.</p>
+              <h3 class="weather-foods-title">오늘의 메뉴 후보</h3>
+              <div id="recommend-foods" class="weather-food-list"><div class="menu-placeholder"><div class="menu-bowl-art" aria-hidden="true"><i></i><i></i><i></i><span></span></div><div><strong>오늘은 어떤 한 끼가 좋을까요?</strong><p>‘오늘의 메뉴 찾기’를 누르면<br>이곳에 날씨에 어울리는 음식이 채워져요.</p></div></div></div>
+              <ul id="recommend-quality" class="weather-quality" hidden></ul>
+              <ul id="recommend-notes" class="summary-notes" hidden><li>날씨 기준의 참고용 음식 후보입니다. 개인의 알레르기나 건강 상태는 반영하지 않습니다.</li><li>기상 기록의 결측·중복 정보를 함께 표시하며, 장기 계절성 및 이상치 검정은 별도로 수행하지 않습니다.</li></ul>
             </div>
           </section>
         </div>
