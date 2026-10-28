@@ -1,4 +1,12 @@
 {
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Nutrition Data Frontend",
+        "supportEmail": "a01075565117@gmail.com"
+      }
+    }
+  },
   "hosting": {
     "public": "frontend/dist",
     "ignore": [
