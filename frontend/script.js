@@ -715,11 +715,16 @@ async function refreshDashboard() {
 
   if (pointsResult.status === "fulfilled") {
     const points = pointsResult.value.sort((a, b) => a.date.localeCompare(b.date));
+    const isSyntheticDemoPoint = (point) => (
+      String(point.memo || "").includes("시연용 합성")
+      || String(point.memo || "").toLowerCase().includes("synthetic demo")
+      || String(point.memo || "").includes("가상")
+    );
     const todayPoint = points.find((point) => point.date === today);
     document.getElementById("dashboard-today-calories").innerHTML = todayPoint
       ? `${formatNumber(todayPoint.value)}<small> kcal</small>` : "—";
     document.getElementById("dashboard-today-calories-note").textContent = todayPoint
-      ? (String(todayPoint.memo || "").includes("가상") ? "가상 시연 데이터" : "저장된 하루 열량 합계")
+      ? (isSyntheticDemoPoint(todayPoint) ? "시연용 합성 데이터 · 실제 섭취 기록 아님" : "저장된 하루 열량 합계")
       : "오늘 열량 데이터가 아직 없습니다.";
     const recent = points.slice(-7);
     if (recent.length) {
@@ -737,16 +742,21 @@ async function refreshDashboard() {
       const values = recent.map((point) => Number(point.value || 0));
       const min = Math.min(...values);
       const max = Math.max(...values);
+      const hasSyntheticDemoPoints = recent.some(isSyntheticDemoPoint);
       document.getElementById("dashboard-chart").innerHTML = recent.map((point) => {
         const value = Number(point.value || 0);
         const height = max === min ? 72 : 28 + ((value - min) / (max - min)) * 68;
         const date = new Date(`${point.date}T12:00:00`);
         const label = new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric" }).format(date);
-        return `<div class="dashboard-chart-column" title="${escapeHtml(point.date)} · ${formatNumber(value)} kcal">
+        const demoLabel = isSyntheticDemoPoint(point) ? " · 합성 시연" : "";
+        return `<div class="dashboard-chart-column" title="${escapeHtml(point.date)} · ${formatNumber(value)} kcal${demoLabel}">
           <span class="dashboard-chart-value">${formatNumber(value)}</span><div class="dashboard-chart-track"><i style="height:${height}%"></i></div><time>${escapeHtml(label)}</time>
         </div>`;
       }).join("");
       document.getElementById("dashboard-chart").setAttribute("aria-label", `최근 ${recent.length}일 일일 열량: ${recent.map((point) => `${point.date} ${formatNumber(point.value)} kcal`).join(", ")}`);
+      document.querySelector(".dashboard-chart-note").textContent = hasSyntheticDemoPoints
+        ? "시연용 합성 데이터가 포함되어 있으며 실제 섭취 기록이 아닙니다."
+        : "일일 열량 기록 기준이며, 식사 영양정보와 같은 섭취를 나타낼 수 있습니다.";
     } else {
       document.getElementById("dashboard-week-average").textContent = "—";
       document.getElementById("dashboard-trend-label").textContent = "아직 열량 기록이 없습니다.";
